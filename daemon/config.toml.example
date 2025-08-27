@@ -31,6 +31,9 @@ key_input_mode = 0
 # Notification URL (optional)
 # ntfy_url = "https://your-ntfy-server.com/rayhunter"
 
+# JWT Configuration
+jwt_key_file = "/etc/keys/jwt-key.txt"
+
 # Analyzer Configuration
 [analyzers]
 # Enable/disable specific IMSI catcher detection heuristics
@@ -41,6 +44,17 @@ null_cipher = true
 nas_null_cipher = true
 incomplete_sib = true
 test_analyzer = false
+
+# GPS Configuration
+[gps]
+# GPS log directory (default: /data/rayhunter/captures)
+gps_log_directory = "/data/rayhunter/captures"
+
+# Enable/disable GPS coordinate logging (default: true)
+gps_logging_enabled = true
+
+# GPS log format: json, csv, or raw (default: json)
+gps_log_format = "json"
 
 # JWT Configuration
 [jwt]

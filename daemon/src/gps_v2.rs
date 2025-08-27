@@ -109,6 +109,7 @@ pub struct GpsV2Error {
 /// - Enhanced GPS coordinate validation from JWT claims
 /// - Timestamp correlation with cellular data
 /// - Real-time processing feedback with security details
+/// - GPS coordinate logging to captures directory
 /// 
 /// POST /api/v2/gps
 /// Authorization: Bearer <JWT_TOKEN>
@@ -126,13 +127,13 @@ pub struct GpsV2Error {
 ///   "heading": 180.0                   // OPTIONAL: heading in degrees
 /// }
 pub async fn gps_api_v2(
-    State(_state): State<Arc<ServerState>>,
+    State(state): State<Arc<ServerState>>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let start_time = std::time::Instant::now();
 
     // Extract and validate JWT token - ALL data comes from JWT claims
-    let gps_data = match extract_and_validate_jwt(&headers).await {
+    let gps_data = match extract_and_validate_jwt(&headers, &state.config).await {
         Ok(data) => data,
         Err((status, error, security_details)) => {
             return Err((
@@ -172,6 +173,12 @@ pub async fn gps_api_v2(
         ));
     }
 
+    // Log GPS coordinates to file using the GPS logger
+    if let Err(e) = state.gps_logger.log_gps_coordinates(&gps_data).await {
+        debug!("Failed to log GPS coordinates: {}", e);
+        // Don't fail the request if logging fails, but log the error
+    }
+
     // Calculate processing time
     let processing_time = start_time.elapsed().as_millis() as u64;
 
@@ -206,7 +213,7 @@ pub async fn gps_api_v2(
 
 /// Extract and validate JWT from Authorization header with comprehensive security
 /// This function ensures INTEGRITY OF CLAIMS - all GPS data comes from JWT
-async fn extract_and_validate_jwt(headers: &HeaderMap) -> Result<GpsCoordinate, (StatusCode, String, Option<String>)> {
+async fn extract_and_validate_jwt(headers: &HeaderMap, config: &crate::config::Config) -> Result<GpsCoordinate, (StatusCode, String, Option<String>)> {
     // 1. Extract Authorization header
     let auth_header = headers
         .get("Authorization")
@@ -224,6 +231,7 @@ async fn extract_and_validate_jwt(headers: &HeaderMap) -> Result<GpsCoordinate, 
 
     // 2. Split token into parts
     let parts: Vec<&str> = token.split('.').collect();
+    
     if parts.len() != 3 {
         return Err((StatusCode::UNAUTHORIZED, "Invalid JWT format - must have 3 parts".to_string(), Some("JWT structure validation failed".to_string())));
     }
@@ -255,7 +263,7 @@ async fn extract_and_validate_jwt(headers: &HeaderMap) -> Result<GpsCoordinate, 
     }
 
     // 6. Get secret key from file
-    let secret_key = get_secret_key_from_file()?;
+    let secret_key = get_secret_key_from_file(config).await?;
 
     // 7. Verify signature to ensure INTEGRITY OF CLAIMS
     let message = format!("{}.{}", base64_header, base64_payload);
@@ -370,14 +378,22 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     result == 0
 }
 
-/// Get secret key from jwt-key.txt file
-fn get_secret_key_from_file() -> Result<Vec<u8>, (StatusCode, String, Option<String>)> {
-    let key_content = std::fs::read_to_string("jwt-key.txt")
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read JWT key file: {}", e), Some("JWT key file read failed".to_string())))?;
+/// Get secret key from JWT key file
+async fn get_secret_key_from_file(config: &crate::config::Config) -> Result<Vec<u8>, (StatusCode, String, Option<String>)> {
+    // Use configured JWT key file path if available, otherwise use default
+    let key_file_path = config.jwt_key_file.as_deref().unwrap_or("/etc/keys/jwt-key.txt");
+    
+    let key_content = std::fs::read_to_string(key_file_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read JWT key file {}: {}", key_file_path, e), Some("JWT key file read failed".to_string())))?;
     
     let key_hex = key_content.trim();
-    if key_hex.len() != 64 {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid JWT key format - must be 64 character hex string".to_string(), Some("JWT key format validation failed".to_string())));
+    
+    // Accept both 32-byte (64 hex chars) and 256-byte (512 hex chars) keys
+    // 32 bytes = 256 bits (standard), 256 bytes = 2048 bits (enhanced security)
+    if key_hex.len() != 64 && key_hex.len() != 512 {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, 
+            format!("Invalid JWT key format - must be 64 characters (256 bits) or 512 characters (2048 bits) hex string, got {} characters", key_hex.len()), 
+            Some("JWT key format validation failed".to_string())));
     }
     
     hex::decode(key_hex)

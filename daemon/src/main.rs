@@ -9,6 +9,7 @@ mod pcap;
 mod qmdl_store;
 mod server;
 mod gps;
+mod gps_logger;
 mod stats;
 mod gps_v2;
 
@@ -302,13 +303,19 @@ async fn run_with_config(
     run_notification_worker(&task_tracker, notification_service);
     let state = Arc::new(ServerState {
         config_path: args.config_path.clone(),
-        config,
+        config: config.clone(),
         qmdl_store_lock: qmdl_store_lock.clone(),
         diag_device_ctrl_sender: diag_tx,
         analysis_status_lock,
         analysis_sender: analysis_tx,
         daemon_restart_tx: Arc::new(RwLock::new(Some(daemon_restart_tx))),
         ui_update_sender: Some(ui_update_tx),
+        gps_logger: Arc::new(crate::gps_logger::GpsLogger::new(
+            qmdl_store_lock.clone(),
+            config.gps.log_directory.clone(),
+            config.gps.logging_enabled,
+            config.gps.log_format,
+        )),
     });
     run_server(&task_tracker, state, server_shutdown_rx).await;
 

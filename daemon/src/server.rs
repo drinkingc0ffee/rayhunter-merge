@@ -22,6 +22,7 @@ use crate::DiagDeviceCtrlMessage;
 use crate::analysis::{AnalysisCtrlMessage, AnalysisStatus};
 use crate::config::Config;
 use crate::display::DisplayState;
+use crate::gps_logger::GpsLogger;
 use crate::pcap::generate_pcap_data;
 use crate::qmdl_store::RecordingStore;
 
@@ -34,6 +35,7 @@ pub struct ServerState {
     pub analysis_sender: Sender<AnalysisCtrlMessage>,
     pub daemon_restart_tx: Arc<RwLock<Option<oneshot::Sender<()>>>>,
     pub ui_update_sender: Option<Sender<DisplayState>>,
+    pub gps_logger: Arc<GpsLogger>,
 }
 
 pub async fn get_qmdl(
@@ -333,6 +335,7 @@ mod tests {
             analysis_sender: analysis_tx,
             daemon_restart_tx: Arc::new(RwLock::new(None)),
             ui_update_sender: None,
+            gps_logger: Arc::new(GpsLogger::new()),
         })
     }
 

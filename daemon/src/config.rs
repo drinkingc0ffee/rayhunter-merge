@@ -18,7 +18,43 @@ pub struct Config {
     pub key_input_mode: u8,
     pub ntfy_url: Option<String>,
     pub jwt_secret: Option<String>,
+    pub jwt_key_file: Option<String>,
     pub analyzers: AnalyzerConfig,
+    // GPS Configuration
+    #[serde(default)]
+    pub gps: GpsConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct GpsConfig {
+    pub log_directory: String,
+    pub logging_enabled: bool,
+    pub log_format: GpsLogFormat,
+}
+
+impl Default for GpsConfig {
+    fn default() -> Self {
+        Self {
+            log_directory: "/data/rayhunter/captures".to_string(),
+            logging_enabled: true,
+            log_format: GpsLogFormat::Json,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GpsLogFormat {
+    Json,
+    Csv,
+    Raw,
+}
+
+impl Default for GpsLogFormat {
+    fn default() -> Self {
+        GpsLogFormat::Json
+    }
 }
 
 impl Default for Config {
@@ -34,6 +70,8 @@ impl Default for Config {
             analyzers: AnalyzerConfig::default(),
             ntfy_url: None,
             jwt_secret: None,
+            jwt_key_file: None,
+            gps: GpsConfig::default(),
         }
     }
 }

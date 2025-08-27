@@ -1,26 +1,30 @@
 #!/usr/bin/env python3
-import requests
-import jwt
-import time
-import uuid
-import sys
-import os
+"""
+Test script for GPS v2 API with JWT authentication
+"""
 
-def create_jwt_token(secret, lat, lon, accuracy=None, altitude=None, speed=None, heading=None):
-    """Create a JWT token for GPS v2 API"""
+import jwt
+import requests
+import time
+import json
+
+# Configuration
+JWT_SECRET = "caa3549fdf95d608e28c08f6c4b57b2d4995638584e98cf679cd27378630b46e"
+API_BASE_URL = "http://localhost:8080"
+GPS_ENDPOINT = f"{API_BASE_URL}/api/v2/gps"
+
+def generate_jwt_token(lat, lon, accuracy=None, altitude=None, speed=None, heading=None):
+    """Generate a JWT token with GPS coordinates"""
     now = int(time.time())
+    
     payload = {
-        # GPS coordinates
         "lat": lat,
         "lon": lon,
-        
-        # Required JWT claims
-        "exp": now + 30,  # 30 seconds expiration
-        "iat": now,       # issued at
-        "jti": str(uuid.uuid4()),  # unique ID to prevent replay attacks
+        "exp": now + 30,  # Expires in 30 seconds
+        "iat": now,
+        "jti": f"test_{now}_{lat}_{lon}",  # Unique JWT ID
     }
     
-    # Add optional fields if provided
     if accuracy is not None:
         payload["accuracy"] = accuracy
     if altitude is not None:
@@ -30,33 +34,74 @@ def create_jwt_token(secret, lat, lon, accuracy=None, altitude=None, speed=None,
     if heading is not None:
         payload["heading"] = heading
     
-    # Create token
-    token = jwt.encode(payload, secret, algorithm="HS256")
+    # Create JWT token
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
     return token
 
-def test_gps_api():
-    # Create JWT token
-    secret = "test_secret"
-    token = create_jwt_token(secret, 37.7749, -122.4194, accuracy=10.0)
-    
-    # Set up ADB port forwarding
-    os.system("adb forward tcp:8080 tcp:8080")
-    
-    # Set environment variable on device
-    os.system("adb shell \"export RAYHUNTER_JWT_SECRET=test_secret\"")
-    
-    # Make request
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    
-    print(f"Sending request with token: {token}")
+def test_gps_api(lat, lon, accuracy=None, altitude=None, speed=None, heading=None):
+    """Test the GPS API endpoint"""
     try:
-        response = requests.post("http://localhost:8080/api/v2/gps", headers=headers)
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
+        # Generate JWT token
+        token = generate_jwt_token(lat, lon, accuracy, altitude, speed, heading)
+        print(f"Generated JWT token: {token[:50]}...")
+        
+        # Prepare headers
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Make POST request (no body needed, all data is in JWT)
+        response = requests.post(GPS_ENDPOINT, headers=headers, timeout=10)
+        
+        print(f"Response Status: {response.status_code}")
+        print(f"Response Headers: {dict(response.headers)}")
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                print(f"Response Data: {json.dumps(data, indent=2)}")
+                return True
+            except json.JSONDecodeError:
+                print(f"Response Text: {response.text}")
+        else:
+            print(f"Error Response: {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
     except Exception as e:
         print(f"Error: {e}")
+    
+    return False
+
+def main():
+    """Main test function"""
+    print("Testing GPS v2 API with JWT authentication")
+    print("=" * 50)
+    
+    # Test coordinates (San Francisco)
+    test_coordinates = [
+        (37.7749, -122.4194, 5.0, 100.0, 25.0, 180.0),  # Full data
+        (40.7128, -74.0060, 10.0, None, None, None),     # Partial data
+        (51.5074, -0.1278, None, None, None, None),       # Basic coordinates
+    ]
+    
+    for i, (lat, lon, accuracy, altitude, speed, heading) in enumerate(test_coordinates, 1):
+        print(f"\nTest {i}: Coordinates ({lat}, {lon})")
+        print("-" * 30)
+        
+        success = test_gps_api(lat, lon, accuracy, altitude, speed, heading)
+        
+        if success:
+            print(f"✅ Test {i} PASSED")
+        else:
+            print(f"❌ Test {i} FAILED")
+        
+        # Wait between tests
+        time.sleep(1)
+    
+    print("\n" + "=" * 50)
+    print("GPS API testing complete!")
 
 if __name__ == "__main__":
-    test_gps_api()
+    main()
