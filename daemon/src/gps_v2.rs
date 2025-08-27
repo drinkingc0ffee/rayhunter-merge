@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use base64::{engine::general_purpose, Engine as _};
-use log::info;
+use log::{info, debug};
 
 use crate::server::ServerState;
 use crate::gps::GpsCoordinate;
@@ -198,7 +198,7 @@ pub async fn gps_api_v2(
         },
     };
 
-    info!("GPS v2 API: JWT claims validated successfully, coordinates: ({}, {}), processing time: {}ms", 
+    debug!("GPS v2 API: JWT claims validated successfully, coordinates: ({}, {}), processing time: {}ms", 
         gps_data.latitude, gps_data.longitude, processing_time);
 
     Ok((StatusCode::OK, Json(response)))
@@ -333,7 +333,7 @@ async fn extract_and_validate_jwt(headers: &HeaderMap) -> Result<GpsCoordinate, 
     };
 
     // Log successful JWT validation with security details
-    info!("JWT validation successful: claims integrity verified, replay protection active, token lifetime: {} seconds, JWT ID: {}", 
+    debug!("JWT validation successful: claims integrity verified, replay protection active, token lifetime: {} seconds, JWT ID: {}", 
         max_token_lifespan, payload.jti);
 
     Ok(gps_coordinate)
