@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use base64::{engine::general_purpose, Engine as _};
-use log::{info, debug};
+use log::debug;
 
 use crate::server::ServerState;
 use crate::gps::GpsCoordinate;
