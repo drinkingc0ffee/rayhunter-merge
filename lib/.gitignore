@@ -1,0 +1,22 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Generated documentation
+doc/
+docs/
+
+# Test artifacts
+test-results/
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

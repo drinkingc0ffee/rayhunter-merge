@@ -1,0 +1,153 @@
+# Rust build artifacts
+target/
+**/target/
+Cargo.lock
+
+# This repository is a branch from https://github.com/EFForg/rayhunter/tree/v0.6.0
+# All build artifacts and target directories should be excluded
+
+# Rust generated files
+*.rs.bk
+*.pdb
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+/tmp/
+/temp/
+
+# Sensitive files - NEVER commit these!
+jwt-key.txt
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+*.srl
+secrets/
+secrets.toml
+.env
+.env.local
+.env.production
+.env.staging
+
+# Configuration files with sensitive data
+config.toml
+config.local.toml
+config.production.toml
+**/config.toml
+**/config.local.toml
+**/config.production.toml
+
+# Device-specific configuration
+device_config/
+device_keys/
+device_certs/
+
+# Build and deployment artifacts
+dist/
+build/
+out/
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+*.apk
+*.ipa
+
+# Docker artifacts
+.dockerignore
+docker-compose.override.yml
+*.env
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/
+# lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Test artifacts
+test-results/
+coverage/
+*.prof
+*.profraw
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Network and device files
+*.pcap
+*.cap
+*.dump
+network_logs/
+device_logs/
+
+# Documentation build artifacts
+book/
+docs/_build/
+site/
+
+# Local development files
+local/
+dev/
+development/

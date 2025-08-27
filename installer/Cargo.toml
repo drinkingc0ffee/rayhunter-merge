@@ -1,0 +1,37 @@
+[package]
+name = "installer"
+version = "0.6.0"
+edition = "2024"
+
+[dependencies]
+aes = "0.8.4"
+anyhow = "1.0.98"
+axum = { version = "0.8.3", features = ["http1", "tokio"], default-features = false }
+base64_light = "0.1.5"
+block-padding = "0.3.3"
+bytes = "1.10.1"
+clap = { version = "4.5.37", features = ["derive"] }
+env_logger = "0.11.8"
+hyper = "1.6.0"
+hyper-util = { version = "0.1.11", features = ["client", "client-legacy"] }
+md5 = "0.7.0"
+md5crypt = "1.0.0"
+nusb = "0.1.13"
+reqwest = { version = "0.11.24", features = ["json"], default-features = false }
+serde = { version = "1.0.219", features = ["derive"] }
+sha2 = "0.10.8"
+tokio = { version = "1.44.2", features = ["io-util", "macros", "rt"], default-features = false }
+tokio-retry2 = "0.5.7"
+tokio-stream = "0.1.17"
+
+[target.'cfg(target_os = "linux")'.dependencies.adb_client]
+git = "https://github.com/EFForg/adb_client.git"
+rev = "e511662394e4fa32865c154c40f81a3d846f700c"
+default-features = false
+features = ["trans-nusb"]
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.adb_client]
+git = "https://github.com/EFForg/adb_client.git"
+rev = "e511662394e4fa32865c154c40f81a3d846f700c"
+default-features = false
+features = ["trans-libusb"]

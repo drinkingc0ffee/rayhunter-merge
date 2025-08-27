@@ -1,0 +1,19 @@
+[package]
+name = "gps_jwt_pin"
+version = "0.6.0"
+edition = "2021"
+
+[[bin]]
+name = "gps_jwt_pin"
+path = "gps_jwt_pin.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.7"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.9"
+thiserror = "1.0"

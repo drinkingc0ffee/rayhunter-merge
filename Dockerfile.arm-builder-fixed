@@ -1,0 +1,49 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    gcc-arm-linux-gnueabihf \
+    git \
+    libssl-dev \
+    pkg-config \
+    musl-tools \
+    wget \
+    sudo
+
+# Create a non-root user
+RUN useradd -m builder && \
+    echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder
+
+USER builder
+WORKDIR /home/builder
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/home/builder/.cargo/bin:${PATH}"
+
+# Install ARM cross-compiler for musl
+RUN mkdir -p /tmp/musl && \
+    cd /tmp/musl && \
+    wget https://musl.cc/arm-linux-musleabihf-cross.tgz && \
+    sudo mkdir -p /opt && \
+    sudo tar -xzf arm-linux-musleabihf-cross.tgz -C /opt && \
+    rm arm-linux-musleabihf-cross.tgz
+
+ENV PATH="/opt/arm-linux-musleabihf-cross/bin:${PATH}"
+
+# Add ARM target
+RUN rustup target add armv7-unknown-linux-musleabihf
+
+# Configure Cargo for cross-compilation
+RUN mkdir -p /home/builder/.cargo && \
+    echo '[target.armv7-unknown-linux-musleabihf]' > /home/builder/.cargo/config && \
+    echo 'linker = "arm-linux-musleabihf-gcc"' >> /home/builder/.cargo/config && \
+    echo 'ar = "arm-linux-musleabihf-ar"' >> /home/builder/.cargo/config && \
+    echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> /home/builder/.cargo/config
+
+# Set working directory
+WORKDIR /workdir

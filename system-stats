@@ -1,0 +1,1 @@
+{"disk_stats":{"partition":"ubi0:usrfs","total_size":"214.7M","used_size":"103.4M","available_size":"111.3M","used_percent":"48%","mounted_on":"/data"},"memory_stats":{"total":"159.9M","used":"134.5M","free":"25.4M"},"runtime_metadata":{"rayhunter_version":"0.6.0","system_os":"Linux 3.18.48","arch":"armv7l"}}

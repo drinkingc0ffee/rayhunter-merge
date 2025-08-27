@@ -1,0 +1,37 @@
+[package]
+name = "rayhunter"
+version = "0.6.0"
+edition = "2021"
+description = "Realtime cellular data decoding and analysis for IMSI catcher detection"
+
+[features]
+default = []
+
+
+[lib]
+name = "rayhunter"
+path = "src/lib.rs"
+
+[dependencies]
+bytes = "1.5"
+chrono = { version = "0.4", features = ["serde"] }
+crc = "3.0"
+deku = { version = "0.18", features = ["logging"] }
+libc = "0.2"
+log = "0.4"
+nix = { version = "0.29", features = ["feature"] }
+pcap-file-tokio = "0.1"
+pycrate-rs = { git = "https://github.com/EFForg/pycrate-rs" }
+thiserror = "1.0"
+telcom-parser = { path = "../telcom-parser" }
+tokio = { version = "1.45", default-features = false, features = ["time", "rt", "macros", "fs"] }
+futures = { version = "0.3", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+csv = "1.3"
+num_enum = "0.7"
+
+[dev-dependencies]
+
+# Dependencies for OpenCellID integration
+csv = "1.3.0"

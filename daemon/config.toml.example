@@ -1,0 +1,71 @@
+# Rayhunter Daemon Configuration Template
+# Copy this file to config.toml and fill in your device-specific values
+
+# Data storage path
+qmdl_store_path = "/data/rayhunter/qmdl"
+
+# HTTP server port
+port = 8080
+
+# Debug mode (set to false in production)
+debug_mode = false
+
+# Colorblind mode for UI
+colorblind_mode = false
+
+# Device selection (will be overwritten by installer)
+device = "orbic"
+
+# UI Levels:
+# 0 = invisible mode, no indicator that rayhunter is running
+# 1 = Subtle mode, display a colored line at the top of the screen
+# 2 = Demo Mode, display a fun orca gif
+# 3 = display the EFF logo
+ui_level = 1
+
+# Key input mode:
+# 0 = rayhunter does not read button presses
+# 1 = double-tapping the power button starts/stops recordings
+key_input_mode = 0
+
+# Notification URL (optional)
+# ntfy_url = "https://your-ntfy-server.com/rayhunter"
+
+# Analyzer Configuration
+[analyzers]
+# Enable/disable specific IMSI catcher detection heuristics
+imsi_requested = true
+connection_redirect_2g_downgrade = true
+lte_sib6_and_7_downgrade = true
+null_cipher = true
+nas_null_cipher = true
+incomplete_sib = true
+test_analyzer = false
+
+# JWT Configuration
+[jwt]
+# JWT secret key (load from file or environment variable)
+# secret_key = "your-secret-key-here"
+# secret_key_file = "jwt-key.txt"
+# secret_key_env = "RAYHUNTER_JWT_KEY"
+
+# Token lifetime in seconds
+token_lifetime = 30
+
+# Allowed algorithms
+allowed_algorithms = ["HS256"]
+
+# Network Configuration
+[network]
+# WiFi interface for captive portal
+wifi_interface = "wlan0"
+bridge_interface = "bridge0"
+
+# DHCP range for captive portal
+dhcp_start = "192.168.1.100"
+dhcp_end = "192.168.1.200"
+dhcp_netmask = "255.255.255.0"
+
+# Portal IP address
+portal_ip = "192.168.1.1"
+portal_port = 8080

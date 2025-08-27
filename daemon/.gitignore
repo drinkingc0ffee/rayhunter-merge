@@ -1,0 +1,40 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Configuration files (may contain sensitive data)
+config.toml
+config.local.toml
+*.toml.backup
+
+# Logs and runtime files
+*.log
+daemon.log
+rayhunter.log
+captive_portal.log
+
+# JWT and security files
+jwt-key.txt
+*.key
+*.pem
+
+# Device-specific files
+device_config/
+device_keys/
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
