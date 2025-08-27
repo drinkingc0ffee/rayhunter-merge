@@ -1,3 +1,10 @@
+//! GPS JWT PIN Tool
+//! 
+//! This tool generates 2048-bit (256-byte) JWT encryption keys from 8-digit PINs
+//! using PBKDF2-HMAC-SHA256 key derivation with configurable salt and iterations.
+//! 
+//! The generated keys are suitable for high-security JWT token signing and validation.
+
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -53,7 +60,7 @@ pub enum InputMethod {
 
 #[derive(Parser, Debug)]
 #[command(name = "gps_jwt_pin")]
-#[command(about = "Generate JWT encryption key from PIN using PBKDF2")]
+#[command(about = "Generate 2048-bit JWT encryption key from PIN using PBKDF2")]
 #[command(version)]
 pub struct Args {
     /// 8-digit PIN code
@@ -94,7 +101,7 @@ impl Default for Config {
         Self {
             salt: default_salt_hex,
             iterations: 100_000,
-            key_length: 64,
+            key_length: 256, // 2048 bits = 256 bytes
             key_file_path: "/etc/keys/jwt-key.txt".to_string(),
             daemon_config_path: "/etc/rayhunter/daemon.toml".to_string(),
         }
@@ -164,6 +171,7 @@ fn derive_key_from_pin(pin: &str, config: &Config) -> Result<String, GpsJwtPinEr
     let salt_bytes = hex::decode(&config.salt)
         .map_err(|e| GpsJwtPinError::KeyDerivation(format!("Invalid salt format: {}", e)))?;
 
+    // Generate 2048-bit key (256 bytes)
     let mut key = vec![0u8; config.key_length];
     
     pbkdf2_hmac::<Sha256>(
@@ -345,7 +353,7 @@ fn main() -> Result<(), GpsJwtPinError> {
                 let status = Status {
                     success: true,
                     message: "Key validation successful".to_string(),
-                    details: Some(format!("Key file: {}, Length: {} bytes", config.key_file_path, config.key_length)),
+                    details: Some(format!("Key file: {}, Length: {} bytes ({} bits)", config.key_file_path, config.key_length, config.key_length * 8)),
                     error: None,
                 };
                 print_status(&status, args.verbose);
@@ -353,7 +361,7 @@ fn main() -> Result<(), GpsJwtPinError> {
                 let status = Status {
                     success: false,
                     message: "Key validation failed".to_string(),
-                    error: Some(format!("Invalid key length: expected {} hex chars, got {}", config.key_length * 2, key_content.len())),
+                    error: Some(format!("Invalid key length: expected {} hex chars ({} bytes, {} bits), got {}", config.key_length * 2, config.key_length, config.key_length * 8, key_content.len())),
                     details: None,
                 };
                 print_status(&status, args.verbose);
@@ -390,7 +398,7 @@ fn main() -> Result<(), GpsJwtPinError> {
     let key = derive_key_from_pin(&pin, &config)?;
     
     if args.verbose {
-        eprintln!("Key derivation successful, length: {} bytes", key.len() / 2);
+        eprintln!("Key derivation successful, length: {} bytes ({} bits)", key.len() / 2, (key.len() / 2) * 8);
     }
 
     // Save key to file
