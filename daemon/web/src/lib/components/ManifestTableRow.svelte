@@ -47,6 +47,7 @@
         <div class="flex flex-row gap-2">
             <DownloadLink url={entry.get_pcap_url()} text="pcap" />
             <DownloadLink url={entry.get_qmdl_url()} text="qmdl" />
+            <DownloadLink url={entry.get_gps_url()} text="gps" />
             <DownloadLink url={entry.get_zip_url()} text="zip" />
         </div>
     </td>

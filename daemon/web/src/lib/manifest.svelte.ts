@@ -91,6 +91,10 @@ export class ManifestEntry {
         return `/api/qmdl/${this.name}.qmdl`;
     }
 
+    get_gps_url(): string {
+        return `/api/gps/${this.name}.gps`;
+    }
+
     get_zip_url(): string {
         return `/api/zip/${this.name}.zip`;
     }

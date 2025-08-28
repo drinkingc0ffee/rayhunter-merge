@@ -68,6 +68,45 @@ pub async fn get_qmdl(
     Ok((headers, body).into_response())
 }
 
+pub async fn get_gps(
+    State(state): State<Arc<ServerState>>,
+    Path(gps_name): Path<String>,
+) -> Result<Response, (StatusCode, String)> {
+    let gps_idx = gps_name.trim_end_matches(".gps");
+    let qmdl_store = state.qmdl_store_lock.read().await;
+    let (_entry_index, entry) = qmdl_store.entry_for_name(gps_idx).ok_or((
+        StatusCode::NOT_FOUND,
+        format!("couldn't find gps file with name {gps_idx}"),
+    ))?;
+    
+    // Check if GPS file exists
+    let gps_file_path = qmdl_store.path.join(format!("{}.gps", entry.name));
+    let gps_file = tokio::fs::File::open(&gps_file_path).await.map_err(|err| {
+        (
+            StatusCode::NOT_FOUND,
+            format!("GPS file not found: {err}"),
+        )
+    })?;
+    
+    let metadata = gps_file.metadata().await.map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("error getting GPS file metadata: {err}"),
+        )
+    })?;
+    
+    let gps_size_bytes = metadata.len() as usize;
+    let limited_gps_file = gps_file.take(gps_size_bytes as u64);
+    let gps_stream = ReaderStream::new(limited_gps_file);
+
+    let headers = [
+        (CONTENT_TYPE, "text/plain"),
+        (CONTENT_LENGTH, &gps_size_bytes.to_string()),
+    ];
+    let body = Body::from_stream(gps_stream);
+    Ok((headers, body).into_response())
+}
+
 pub async fn serve_static(
     State(_): State<Arc<ServerState>>,
     Path(path): Path<String>,
@@ -231,6 +270,25 @@ pub async fn get_zip(
                 entry_writer.into_inner().close().await?;
             }
 
+            // Add GPS file if it exists
+            {
+                let gps_file_path = {
+                    let qmdl_store = qmdl_store_lock.read().await;
+                    qmdl_store.path.join(format!("{qmdl_idx}.gps"))
+                };
+                
+                if let Ok(mut gps_file) = tokio::fs::File::open(&gps_file_path).await {
+                    let entry = ZipEntryBuilder::new(format!("{qmdl_idx}.gps").into(), Compression::Stored);
+                    let mut entry_writer = zip.write_entry_stream(entry).await?.compat_write();
+                    
+                    if let Err(e) = copy(&mut gps_file, &mut entry_writer).await {
+                        error!("Failed to add GPS file to ZIP: {e:?}");
+                    }
+                    
+                    entry_writer.into_inner().close().await?;
+                }
+            }
+
             zip.close().await?;
             Ok(())
         }
@@ -335,7 +393,11 @@ mod tests {
             analysis_sender: analysis_tx,
             daemon_restart_tx: Arc::new(RwLock::new(None)),
             ui_update_sender: None,
-            gps_logger: Arc::new(GpsLogger::new()),
+            gps_logger: Arc::new(GpsLogger::new(
+                store_lock.clone(),
+                true,
+                crate::config::GpsLogFormat::Simple,
+            )),
         })
     }
 
@@ -368,7 +430,7 @@ mod tests {
 
         assert_eq!(
             filenames,
-            vec![format!("{entry_name}.qmdl"), format!("{entry_name}.pcapng"),]
+            vec![format!("{entry_name}.qmdl"), format!("{entry_name}.pcapng"), format!("{entry_name}.gps"),]
         );
     }
 }
