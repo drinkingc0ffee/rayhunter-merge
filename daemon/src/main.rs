@@ -312,9 +312,8 @@ async fn run_with_config(
         ui_update_sender: Some(ui_update_tx),
         gps_logger: Arc::new(crate::gps_logger::GpsLogger::new(
             qmdl_store_lock.clone(),
-            config.gps.log_directory.clone(),
-            config.gps.logging_enabled,
-            config.gps.log_format,
+            config.gps.gps_logging_enabled,
+            config.gps.gps_log_format,
         )),
     });
     run_server(&task_tracker, state, server_shutdown_rx).await;

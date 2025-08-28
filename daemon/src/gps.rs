@@ -27,18 +27,3 @@ pub struct GpsCoordinate {
     #[serde(default)]
     pub request_id: Option<String>,
 }
-
-/// Response structure for GPS API calls
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GpsResponse {
-    pub status: String,
-    pub message: String,
-}
-
-/// Response structure for GPS v2 API with security info
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GpsV2Security {
-    pub status: String,
-    pub message: String,
-    pub jti_verified: bool,
-}

@@ -28,17 +28,15 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct GpsConfig {
-    pub log_directory: String,
-    pub logging_enabled: bool,
-    pub log_format: GpsLogFormat,
+    pub gps_logging_enabled: bool,
+    pub gps_log_format: GpsLogFormat,
 }
 
 impl Default for GpsConfig {
     fn default() -> Self {
         Self {
-            log_directory: "/data/rayhunter/captures".to_string(),
-            logging_enabled: true,
-            log_format: GpsLogFormat::Json,
+            gps_logging_enabled: true,
+            gps_log_format: GpsLogFormat::Simple,
         }
     }
 }
@@ -49,6 +47,7 @@ pub enum GpsLogFormat {
     Json,
     Csv,
     Raw,
+    Simple,
 }
 
 impl Default for GpsLogFormat {

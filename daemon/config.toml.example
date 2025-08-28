@@ -47,14 +47,15 @@ test_analyzer = false
 
 # GPS Configuration
 [gps]
-# GPS log directory (default: /data/rayhunter/captures)
-gps_log_directory = "/data/rayhunter/captures"
+# GPS logs are now stored in the QMDL directory alongside QMDL and NDJSON logs
+# This ensures all logs (QMDL, NDJSON, GPS) have the same timestamp filenames
+# and are created at the same time during recording sessions
 
 # Enable/disable GPS coordinate logging (default: true)
 gps_logging_enabled = true
 
-# GPS log format: json, csv, or raw (default: json)
-gps_log_format = "json"
+# GPS log format: json, csv, raw, or simple (default: simple - format: timestamp, lat, lon)
+gps_log_format = "simple"
 
 # JWT Configuration
 [jwt]

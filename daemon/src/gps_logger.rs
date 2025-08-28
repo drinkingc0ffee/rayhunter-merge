@@ -1,14 +1,14 @@
 //! GPS Logging Module
 //! 
-//! This module handles writing GPS coordinates to log files in the captures directory.
-//! It supports multiple output formats and integrates with the existing recording system.
+//! This module handles writing GPS coordinates to log files in the QMDL directory.
+//! It integrates with the existing recording system to ensure GPS logs are created
+//! at the same time as QMDL and NDJSON logs with the same timestamp filenames.
 
-use std::path::Path;
 use std::sync::Arc;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::sync::RwLock;
-use log::{debug, info};
+use log::debug;
 use serde::Serialize;
 
 use crate::gps::GpsCoordinate;
@@ -30,7 +30,6 @@ pub enum GpsLoggerError {
 
 pub struct GpsLogger {
     qmdl_store: Arc<RwLock<RecordingStore>>,
-    gps_log_directory: String,
     logging_enabled: bool,
     log_format: crate::config::GpsLogFormat,
 }
@@ -38,19 +37,18 @@ pub struct GpsLogger {
 impl GpsLogger {
     pub fn new(
         qmdl_store: Arc<RwLock<RecordingStore>>,
-        gps_log_directory: String,
-        logging_enabled: bool,
-        log_format: crate::config::GpsLogFormat,
+        gps_logging_enabled: bool,
+        gps_log_format: crate::config::GpsLogFormat,
     ) -> Self {
         Self {
             qmdl_store,
-            gps_log_directory,
-            logging_enabled,
-            log_format,
+            logging_enabled: gps_logging_enabled,
+            log_format: gps_log_format,
         }
     }
 
     /// Log GPS coordinates to the current recording session
+    /// GPS logs are stored in the same directory as QMDL logs with the same timestamp filename
     pub async fn log_gps_coordinates(&self, coordinates: &GpsCoordinate) -> Result<(), GpsLoggerError> {
         if !self.logging_enabled {
             debug!("GPS logging is disabled, skipping coordinates: ({}, {})", 
@@ -59,11 +57,11 @@ impl GpsLogger {
         }
 
         // Get the current recording entry to determine the filename
-        let current_entry_name = {
+        let (current_entry_name, qmdl_directory) = {
             let qmdl_store = self.qmdl_store.read().await;
             if let Some(current_idx) = qmdl_store.current_entry {
                 if let Some(entry) = qmdl_store.manifest.entries.get(current_idx) {
-                    entry.name.clone()
+                    (entry.name.clone(), qmdl_store.path.clone())
                 } else {
                     return Err(GpsLoggerError::NoCurrentEntry);
                 }
@@ -72,15 +70,8 @@ impl GpsLogger {
             }
         };
 
-        // Create the GPS log file path
-        let gps_file_path = Path::new(&self.gps_log_directory)
-            .join(format!("{}.gps", current_entry_name));
-
-        // Ensure the directory exists
-        if let Some(parent) = gps_file_path.parent() {
-            tokio::fs::create_dir_all(parent).await
-                .map_err(|e| GpsLoggerError::FileCreationError(e.to_string()))?;
-        }
+        // Create the GPS log file path in the QMDL directory with the same timestamp filename
+        let gps_file_path = qmdl_directory.join(format!("{}.gps", current_entry_name));
 
         // Open or create the GPS log file
         let gps_file = OpenOptions::new()
@@ -103,13 +94,16 @@ impl GpsLogger {
             crate::config::GpsLogFormat::Raw => {
                 self.write_raw_format(&mut writer, coordinates).await?;
             }
+            crate::config::GpsLogFormat::Simple => {
+                self.write_simple_format(&mut writer, coordinates).await?;
+            }
         }
 
         // Flush the writer to ensure data is written to disk
         writer.flush().await
             .map_err(|e| GpsLoggerError::WriteError(e.to_string()))?;
 
-        info!("GPS coordinates logged to {}: ({}, {})", 
+        debug!("GPS coordinates logged to {}: ({}, {})", 
             gps_file_path.display(), coordinates.latitude, coordinates.longitude);
 
         Ok(())
@@ -157,24 +151,17 @@ impl GpsLogger {
         Ok(())
     }
 
-    /// Write GPS coordinates in CSV format
+    /// Write GPS coordinates in CSV format (simplified)
     async fn write_csv_format<W: AsyncWriteExt + Unpin>(
         &self,
         writer: &mut BufWriter<W>,
         coordinates: &GpsCoordinate,
     ) -> Result<(), GpsLoggerError> {
         let csv_line = format!(
-            "{},{},{},{},{},{},{},{},{},{}\n",
-            coordinates.timestamp.to_rfc3339(),
+            "{},{},{}\n",
+            coordinates.timestamp.timestamp(),
             coordinates.latitude,
             coordinates.longitude,
-            coordinates.accuracy.unwrap_or(-1.0),
-            coordinates.altitude.unwrap_or(-1.0),
-            coordinates.speed.unwrap_or(-1.0),
-            coordinates.heading.unwrap_or(-1.0),
-            coordinates.device_id.as_deref().unwrap_or(""),
-            coordinates.app_version.as_deref().unwrap_or(""),
-            coordinates.request_id.as_deref().unwrap_or(""),
         );
 
         writer.write_all(csv_line.as_bytes()).await
@@ -184,23 +171,17 @@ impl GpsLogger {
     }
 
     /// Write GPS coordinates in raw format (simple text)
+    /// Format: unix_timestamp, latitude, longitude
     async fn write_raw_format<W: AsyncWriteExt + Unpin>(
         &self,
         writer: &mut BufWriter<W>,
         coordinates: &GpsCoordinate,
     ) -> Result<(), GpsLoggerError> {
         let raw_line = format!(
-            "{} {} {} {} {} {} {} {} {} {}\n",
+            "{}, {}, {}\n",
             coordinates.timestamp.timestamp(),
             coordinates.latitude,
             coordinates.longitude,
-            coordinates.accuracy.unwrap_or(-1.0),
-            coordinates.altitude.unwrap_or(-1.0),
-            coordinates.speed.unwrap_or(-1.0),
-            coordinates.heading.unwrap_or(-1.0),
-            coordinates.device_id.as_deref().unwrap_or(""),
-            coordinates.app_version.as_deref().unwrap_or(""),
-            coordinates.request_id.as_deref().unwrap_or(""),
         );
 
         writer.write_all(raw_line.as_bytes()).await
@@ -209,18 +190,22 @@ impl GpsLogger {
         Ok(())
     }
 
-    /// Check if GPS logging is enabled
-    pub fn is_enabled(&self) -> bool {
-        self.logging_enabled
-    }
+    /// Write GPS coordinates in simple format (unix_timestamp, latitude, longitude)
+    async fn write_simple_format<W: AsyncWriteExt + Unpin>(
+        &self,
+        writer: &mut BufWriter<W>,
+        coordinates: &GpsCoordinate,
+    ) -> Result<(), GpsLoggerError> {
+        let simple_line = format!(
+            "{},{},{}\n",
+            coordinates.timestamp.timestamp(),
+            coordinates.latitude,
+            coordinates.longitude,
+        );
 
-    /// Get the GPS log directory path
-    pub fn get_log_directory(&self) -> &str {
-        &self.gps_log_directory
-    }
+        writer.write_all(simple_line.as_bytes()).await
+            .map_err(|e| GpsLoggerError::WriteError(e.to_string()))?;
 
-    /// Get the current log format
-    pub fn get_log_format(&self) -> &crate::config::GpsLogFormat {
-        &self.log_format
+        Ok(())
     }
 }
