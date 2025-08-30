@@ -23,6 +23,9 @@ pub struct Config {
     // GPS Configuration
     #[serde(default)]
     pub gps: GpsConfig,
+    // Attack Alert Configuration
+    #[serde(default)]
+    pub alerts: AlertConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -56,6 +59,22 @@ impl Default for GpsLogFormat {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct AlertConfig {
+    pub browser_notifications: bool,
+    pub max_alerts: usize,
+}
+
+impl Default for AlertConfig {
+    fn default() -> Self {
+        Self {
+            browser_notifications: true,
+            max_alerts: 100,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -71,6 +90,7 @@ impl Default for Config {
             jwt_secret: None,
             jwt_key_file: None,
             gps: GpsConfig::default(),
+            alerts: AlertConfig::default(),
         }
     }
 }

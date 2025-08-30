@@ -9,14 +9,18 @@ use axum::extract::State;
 use axum::http::header::{self, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use log::{error, warn};
+use axum::response::{sse::Event, sse::Sse};
+use futures_util::stream::Stream;
+use log::{error, warn, debug};
 use std::sync::Arc;
 use tokio::fs::write;
 use tokio::io::{AsyncReadExt, copy, duplex};
 use tokio::sync::mpsc::Sender;
-use tokio::sync::{RwLock, oneshot};
+use tokio::sync::{RwLock, oneshot, broadcast};
 use tokio_util::compat::FuturesAsyncWriteCompatExt;
 use tokio_util::io::ReaderStream;
+use serde::Serialize;
+use async_stream::stream;
 
 use crate::DiagDeviceCtrlMessage;
 use crate::analysis::{AnalysisCtrlMessage, AnalysisStatus};
@@ -25,6 +29,16 @@ use crate::display::DisplayState;
 use crate::gps_logger::GpsLogger;
 use crate::pcap::generate_pcap_data;
 use crate::qmdl_store::RecordingStore;
+
+
+/// Alert event sent to web clients
+#[derive(Debug, Clone, Serialize)]
+pub struct AlertEvent {
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub event_type: String,
+    pub message: String,
+    pub location: Option<(f64, f64)>,
+}
 
 pub struct ServerState {
     pub config_path: String,
@@ -36,6 +50,28 @@ pub struct ServerState {
     pub daemon_restart_tx: Arc<RwLock<Option<oneshot::Sender<()>>>>,
     pub ui_update_sender: Option<Sender<DisplayState>>,
     pub gps_logger: Arc<GpsLogger>,
+    pub alert_event_sender: broadcast::Sender<AlertEvent>,
+}
+
+/// SSE endpoint for real-time attack alerts
+pub async fn get_attack_alerts_sse(
+    State(state): State<Arc<ServerState>>,
+) -> Sse<impl Stream<Item = Result<Event, std::io::Error>>> {
+    let mut rx = state.alert_event_sender.subscribe();
+    
+    debug!("Client connected to attack alerts SSE endpoint");
+    
+    let stream = stream! {
+        while let Ok(alert) = rx.recv().await {
+            debug!("Sending alert event: {:?}", alert.event_type);
+            let event = Event::default()
+                .json_data(alert)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            yield Ok(event);
+        }
+    };
+    
+    Sse::new(stream)
 }
 
 pub async fn get_qmdl(
@@ -378,11 +414,15 @@ mod tests {
     ) -> Arc<ServerState> {
         let (tx, _rx) = tokio::sync::mpsc::channel(1);
         let (analysis_tx, _analysis_rx) = tokio::sync::mpsc::channel(1);
+        let (alert_tx, _alert_rx) = tokio::sync::broadcast::channel(100);
 
         let analysis_status = {
             let store = store_lock.try_read().unwrap();
             crate::analysis::AnalysisStatus::new(&store)
         };
+        
+        // Clone for the GpsLogger
+        let store_lock_for_gps = store_lock.clone();
 
         Arc::new(ServerState {
             config_path: "/tmp/test_config.toml".to_string(),
@@ -394,10 +434,11 @@ mod tests {
             daemon_restart_tx: Arc::new(RwLock::new(None)),
             ui_update_sender: None,
             gps_logger: Arc::new(GpsLogger::new(
-                store_lock.clone(),
+                store_lock_for_gps,
                 true,
                 crate::config::GpsLogFormat::Simple,
             )),
+            alert_event_sender: alert_tx,
         })
     }
 

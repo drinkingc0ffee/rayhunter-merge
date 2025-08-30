@@ -10,6 +10,7 @@
     import RecordingControls from '$lib/components//RecordingControls.svelte';
     import ConfigForm from '$lib/components/ConfigForm.svelte';
     import ActionErrors from '$lib/components/ActionErrors.svelte';
+    import AttackAlertSystem from '$lib/components/AttackAlertSystem.svelte';
 
     let manager: AnalysisManager = new AnalysisManager();
     let loaded = $state(false);
@@ -131,6 +132,9 @@
     {/if}
     <ActionErrors />
     {#if loaded}
+        <!-- Attack Alert System - Added at the top for high visibility -->
+        <AttackAlertSystem />
+        
         <div class="flex flex-col lg:flex-row gap-4">
             {#if current_entry}
                 <Card

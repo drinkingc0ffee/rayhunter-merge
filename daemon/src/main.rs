@@ -8,8 +8,10 @@ mod notifications;
 mod pcap;
 mod qmdl_store;
 mod server;
+mod server_fs;
 mod gps;
 mod gps_logger;
+mod gps_lookup;
 mod stats;
 mod gps_v2;
 
@@ -25,7 +27,9 @@ use crate::pcap::get_pcap;
 use crate::qmdl_store::RecordingStore;
 use crate::server::{
     get_config, get_gps, get_qmdl, get_zip, set_config, debug_set_display_state, ServerState, serve_static,
+    get_attack_alerts_sse, AlertEvent,
 };
+use crate::server_fs::serve_fs_static;
 use crate::stats::{get_qmdl_manifest, get_system_stats};
 
 use analysis::{
@@ -45,7 +49,7 @@ use rayhunter::diag_device::DiagDevice;
 use tokio::net::TcpListener;
 use tokio::select;
 use tokio::sync::mpsc::{self, Sender};
-use tokio::sync::{RwLock, oneshot};
+use tokio::sync::{RwLock, oneshot, broadcast};
 use tokio::task::JoinHandle;
 use tokio_util::task::TaskTracker;
 
@@ -70,7 +74,9 @@ fn get_router() -> AppRouter {
         .route("/api/config", get(get_config))
         .route("/api/config", post(set_config))
         .route("/api/debug/display-state", post(debug_set_display_state))
+        .route("/api/attack-alerts", get(get_attack_alerts_sse))
         .route("/", get(|| async { Redirect::permanent("/index.html") }))
+        .route("/fs/{*path}", get(serve_fs_static))
         .route("/{*path}", get(serve_static));
     
     router
@@ -194,6 +200,57 @@ fn run_shutdown_thread(
     })
 }
 
+// Function to handle attack detection and send alerts
+fn setup_attack_alert_monitoring(
+    task_tracker: &TaskTracker,
+    alert_event_tx: broadcast::Sender<AlertEvent>,
+    qmdl_store_lock: Arc<RwLock<RecordingStore>>,
+) -> mpsc::Sender<display::DisplayState> {
+    // Create a channel for monitoring display state updates
+    let (display_tx, mut display_rx) = mpsc::channel::<display::DisplayState>(10);
+    let qmdl_store = qmdl_store_lock.clone();
+    let alert_tx = alert_event_tx.clone();
+    
+    // Spawn a task to process display state updates and send alerts
+    task_tracker.spawn(async move {
+        while let Some(display_state) = display_rx.recv().await {
+            if let display::DisplayState::WarningDetected { event_type } = display_state {
+                info!("Attack detected: {:?}", event_type);
+                
+                // Get current recording entry
+                let current_entry = {
+                    let store = qmdl_store.read().await;
+                    store.current_entry.and_then(|idx| store.manifest.entries.get(idx).map(|e| e.name.clone()))
+                };
+                
+                // Get GPS coordinates if available
+                let location = if let Some(entry_name) = current_entry {
+                    let gps_file_path = {
+                        let store = qmdl_store.read().await;
+                        store.path.join(format!("{}.gps", entry_name))
+                    };
+                    
+                    crate::gps_lookup::get_most_recent_gps(&gps_file_path).await
+                } else {
+                    None
+                };
+                
+                // Create alert object
+                let alert = AlertEvent {
+                    timestamp: chrono::Utc::now(),
+                    event_type: format!("{:?}", event_type),
+                    message: format!("Rayhunter has detected a {:?} severity event", event_type),
+                    location,
+                };
+                
+                let _ = alert_tx.send(alert);
+            }
+        }
+    });
+    
+    display_tx
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), RayhunterError> {
     env_logger::init();
@@ -225,10 +282,15 @@ async fn run_with_config(
     let analysis_status = AnalysisStatus::new(&store);
     let qmdl_store_lock = Arc::new(RwLock::new(store));
     let (diag_tx, diag_rx) = mpsc::channel::<DiagDeviceCtrlMessage>(1);
-    let (ui_update_tx, ui_update_rx) = mpsc::channel::<display::DisplayState>(1);
     let (analysis_tx, analysis_rx) = mpsc::channel::<AnalysisCtrlMessage>(5);
     let mut maybe_ui_shutdown_tx = None;
     let mut maybe_key_input_shutdown_tx = None;
+    
+    // Create broadcast channel for attack alerts
+    let (alert_event_tx, _) = broadcast::channel(100);
+    
+    // Set up attack alert monitoring
+    let ui_update_tx = setup_attack_alert_monitoring(&task_tracker, alert_event_tx.clone(), qmdl_store_lock.clone());
 
     let notification_service = NotificationService::new(config.ntfy_url.clone());
 
@@ -265,6 +327,27 @@ async fn run_with_config(
             Device::Pinephone => display::headless::update_ui,
             Device::Uz801 => display::uz801::update_ui,
         };
+        
+        // Create a channel for the UI
+        let (ui_update_rx_sender, ui_update_rx) = mpsc::channel::<display::DisplayState>(10);
+        
+        // Clone the sender for forwarding (unused for now but kept for future use)
+        let _ui_update_tx_clone = ui_update_tx.clone();
+        
+        // Forward display state updates to the UI
+        task_tracker.spawn(async move {
+            // Send initial state
+            let _ = ui_update_rx_sender.send(display::DisplayState::Paused).await;
+            
+            // Create a channel to receive display state updates
+            let (_, mut rx) = mpsc::channel::<display::DisplayState>(10);
+            
+            // Forward messages
+            while let Some(msg) = rx.recv().await {
+                let _ = ui_update_rx_sender.send(msg).await;
+            }
+        });
+        
         update_ui(&task_tracker, &config, ui_shutdown_rx, ui_update_rx);
 
         info!("Starting Key Input service");
@@ -314,8 +397,9 @@ async fn run_with_config(
         gps_logger: Arc::new(crate::gps_logger::GpsLogger::new(
             qmdl_store_lock.clone(),
             config.gps.gps_logging_enabled,
-            config.gps.gps_log_format,
+            config.gps.gps_log_format.clone(),
         )),
+        alert_event_sender: alert_event_tx,
     });
     run_server(&task_tracker, state, server_shutdown_rx).await;
 

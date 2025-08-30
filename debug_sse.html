@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Debug - Attack Alerts</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .control-panel {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .connected {
+            background-color: #4CAF50;
+        }
+        .disconnected {
+            background-color: #F44336;
+        }
+        .connecting {
+            background-color: #FFC107;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.disconnect {
+            background-color: #f44336;
+        }
+        button.disconnect:hover {
+            background-color: #d32f2f;
+        }
+        button.test {
+            background-color: #2196F3;
+        }
+        button.test:hover {
+            background-color: #0b7dda;
+        }
+        .alert-list {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .alert-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        .alert-high {
+            border-left-color: #F44336;
+        }
+        .alert-medium {
+            border-left-color: #FF9800;
+        }
+        .alert-low {
+            border-left-color: #FFC107;
+        }
+        .alert-info {
+            border-left-color: #2196F3;
+        }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .alert-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .log {
+            margin-top: 20px;
+            background-color: #333;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>SSE Debug - Attack Alerts</h1>
+    
+    <div class="control-panel">
+        <h2>Connection Status: <span id="connection-status-text">Disconnected</span> <span id="connection-status" class="status disconnected"></span></h2>
+        <button id="connect-btn">Connect</button>
+        <button id="disconnect-btn" class="disconnect" disabled>Disconnect</button>
+        <button id="test-high-btn" class="test">Test High Alert</button>
+        <button id="test-medium-btn" class="test">Test Medium Alert</button>
+        <button id="test-low-btn" class="test">Test Low Alert</button>
+        <button id="clear-btn">Clear Alerts</button>
+    </div>
+    
+    <div class="alert-list" id="alert-list">
+        <h2>Alerts</h2>
+        <div id="alerts-container">
+            <p>No alerts received yet.</p>
+        </div>
+    </div>
+    
+    <div class="log">
+        <h2>Event Log</h2>
+        <div id="log-container"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const testHighBtn = document.getElementById('test-high-btn');
+        const testMediumBtn = document.getElementById('test-medium-btn');
+        const testLowBtn = document.getElementById('test-low-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        const connectionStatusText = document.getElementById('connection-status-text');
+        const alertsContainer = document.getElementById('alerts-container');
+        const logContainer = document.getElementById('log-container');
+        
+        // Variables
+        let eventSource = null;
+        let alerts = [];
+        
+        // Functions
+        function updateConnectionStatus(status) {
+            connectionStatus.className = `status ${status}`;
+            connectionStatusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            if (status === 'connected') {
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+        
+        function connectToEventSource() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            updateConnectionStatus('connecting');
+            logEvent('Connecting to SSE endpoint...');
+            
+            try {
+                eventSource = new EventSource('/api/attack-alerts');
+                
+                eventSource.onopen = () => {
+                    updateConnectionStatus('connected');
+                    logEvent('Connection established');
+                };
+                
+                eventSource.onmessage = (event) => {
+                    logEvent(`Received message: ${event.data}`);
+                    try {
+                        const alert = JSON.parse(event.data);
+                        alerts.unshift(alert); // Add to beginning
+                        renderAlerts();
+                    } catch (error) {
+                        logEvent(`Error parsing alert: ${error.message}`);
+                    }
+                };
+                
+                eventSource.onerror = (error) => {
+                    updateConnectionStatus('disconnected');
+                    logEvent(`Connection error: ${JSON.stringify(error)}`);
+                };
+            } catch (error) {
+                updateConnectionStatus('disconnected');
+                logEvent(`Failed to create EventSource: ${error.message}`);
+            }
+        }
+        
+        function disconnectFromEventSource() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateConnectionStatus('disconnected');
+                logEvent('Disconnected from SSE endpoint');
+            }
+        }
+        
+        function sendTestAlert(severity) {
+            logEvent(`Sending test ${severity} alert...`);
+            
+            // Create a form for the POST request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/debug/display-state';
+            form.style.display = 'none';
+            
+            // Create a hidden input for the JSON data
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'data';
+            input.value = JSON.stringify({
+                "WarningDetected": {
+                    "event_type": severity
+                }
+            });
+            
+            // Add the input to the form and the form to the document
+            form.appendChild(input);
+            document.body.appendChild(form);
+            
+            // Submit the form
+            form.submit();
+            
+            // Log that we sent the request (no response handling with form submit)
+            logEvent(`Alert request sent`);
+            
+            // Remove the form from the document
+            setTimeout(() => {
+                document.body.removeChild(form);
+            }, 1000);
+        }
+        
+        function clearAlerts() {
+            alerts = [];
+            renderAlerts();
+            logEvent('Alerts cleared');
+        }
+        
+        function renderAlerts() {
+            if (alerts.length === 0) {
+                alertsContainer.innerHTML = '<p>No alerts received yet.</p>';
+                return;
+            }
+            
+            alertsContainer.innerHTML = '';
+            
+            alerts.forEach(alert => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item alert-${alert.event_type.toLowerCase()}`;
+                
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                
+                alertDiv.innerHTML = `
+                    <div class="alert-header">
+                        <span>${alert.event_type}</span>
+                        <span class="alert-time">${timestamp}</span>
+                    </div>
+                    <div>${alert.message}</div>
+                    ${alert.location ? `<div>Location: ${alert.location[0]}, ${alert.location[1]}</div>` : ''}
+                    <pre>${JSON.stringify(alert, null, 2)}</pre>
+                `;
+                
+                alertsContainer.appendChild(alertDiv);
+            });
+        }
+        
+        function logEvent(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Event Listeners
+        connectBtn.addEventListener('click', connectToEventSource);
+        disconnectBtn.addEventListener('click', disconnectFromEventSource);
+        testHighBtn.addEventListener('click', () => sendTestAlert('High'));
+        testMediumBtn.addEventListener('click', () => sendTestAlert('Medium'));
+        testLowBtn.addEventListener('click', () => sendTestAlert('Low'));
+        clearBtn.addEventListener('click', clearAlerts);
+        
+        // Initialize
+        updateConnectionStatus('disconnected');
+        logEvent('Page loaded. Click "Connect" to start receiving alerts.');
+    </script>
+</body>
+</html>
