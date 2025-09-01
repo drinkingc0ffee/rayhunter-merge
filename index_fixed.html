@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rayhunter - Cellular Monitoring</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #6c5ce7;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #6c5ce7;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h3::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #6c5ce7;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            font-weight: 500;
+        }
+        
+        .status-value {
+            font-weight: 600;
+            color: #6c5ce7;
+        }
+        
+        .log-display {
+            background: #2d3436;
+            color: #55efc4;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            background: #6c5ce7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn:hover {
+            background: #5649c0;
+            transform: translateY(-2px);
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            background: #6c5ce7;
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-body p {
+            margin: 0;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .feature-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        .feature-item h4 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #6c5ce7;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        /* Alert styles */
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .alert:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .alert-high {
+            background-color: #ffebee;
+            border-left: 5px solid #f44336;
+            color: #b71c1c;
+        }
+        
+        .alert-medium {
+            background-color: #fff8e1;
+            border-left: 5px solid #ffc107;
+            color: #ff6f00;
+        }
+        
+        .alert-low {
+            background-color: #e8f5e9;
+            border-left: 5px solid #4caf50;
+            color: #1b5e20;
+        }
+        
+        .alert-content {
+            flex: 1;
+        }
+        
+        .alert-time {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .alert-location {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .alert-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .alert-dismiss {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 5px;
+        }
+        
+        #alerts-container {
+            min-height: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+            /* Force scrollbar to be visible in Chrome when needed */
+            scrollbar-width: thin;
+            scrollbar-color: #6c5ce7 #f0f0f0;
+            /* Dynamic sizing - grows with content up to max */
+            transition: height 0.3s ease;
+            /* Chrome-specific scrollbar forcing */
+            -webkit-overflow-scrolling: touch;
+            /* Force scrollbar visibility in Chrome */
+            scrollbar-gutter: stable;
+        }
+        
+        /* Webkit scrollbar styling for Chrome/Safari */
+        #alerts-container::-webkit-scrollbar {
+            width: 8px;
+            /* Force scrollbar to always be visible */
+            -webkit-appearance: none;
+        }
+        
+        #alerts-container::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+            /* Ensure track is always visible */
+            border: 1px solid #e0e0e0;
+        }
+        
+        #alerts-container::-webkit-scrollbar-thumb {
+            background: #6c5ce7;
+            border-radius: 4px;
+            border: 1px solid #6c5ce7;
+        }
+        
+        #alerts-container::-webkit-scrollbar-thumb:hover {
+            background: #5649c0;
+        }
+        
+        /* Force scrollbar to be visible when overflow is scroll */
+        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar {
+            display: block !important;
+        }
+        
+        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar-track {
+            display: block !important;
+        }
+        
+        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar-thumb {
+            display: block !important;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .connection-status span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background-color: #4CAF50;
+        }
+        
+        .status-disconnected {
+            background-color: #F44336;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out forwards, fadeOut 0.5s 2.5s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Map styles */
+        #map-container {
+            height: 400px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .map-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .map-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .legend-high {
+            background-color: #f44336;
+        }
+        
+        .legend-medium {
+            background-color: #ffc107;
+        }
+        
+        .legend-low {
+            background-color: #4caf50;
+        }
+        
+        .alert-active {
+            border: 2px solid #6c5ce7;
+            box-shadow: 0 0 10px rgba(108, 92, 231, 0.5);
+        }
+        
+        /* Individual alert map button */
+        .map-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            background: #6c5ce7;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        
+        .map-btn:hover {
+            background: #5649c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐳 RAYHUNTER</h1>
+            <p>Advanced Cellular Security Monitoring System</p>
+            <p>Rayhunter Version: 0.6.2.17 GE (Deployed: 2025-09-01 10:56:51)
+        </div>
+        
+        <!-- Alert Card - Placed at the top -->        
+        <div class="card">
+            <h3>Cell Attack Alerts</h3>
+            <div class="connection-status">
+                <span id="alert-status-indicator" class="status-disconnected"></span>
+                <span id="alert-status-text">Disconnected</span>
+            </div>
+            <div id="alerts-container">
+                <p id="no-alerts-message">No alerts detected yet.</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn" id="clear-alerts-btn">Clear Alerts</button>
+            </div>
+        </div>
+        
+        <!-- Confirmation Modal -->
+        <div id="confirmation-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirm Action</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-message">Are you sure you want to clear all alerts? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button class="btn btn-danger" id="confirm-btn">Clear All Alerts</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Container - Always visible below alerts -->
+        <div id="map-container">
+            <div id="map"></div>
+            <div class="map-controls">
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <div class="legend-color legend-high"></div>
+                        <span>High</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-medium"></div>
+                        <span>Medium</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-low"></div>
+                        <span>Low</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div>
+                <div class="card">
+                    <h3>System Status</h3>
+                    <div class="status-item">
+                        <span class="status-label">Cellular Monitoring:</span>
+                        <span class="status-value" id="cellular-status">ACTIVE</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Diag Connection:</span>
+                        <span class="status-value" id="diag-status">CONNECTED</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Packets Captured:</span>
+                        <span class="status-value" id="capture-count">5280</span>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn" onclick="refreshStatus()">Refresh Status</button>
+                </div>
+            </div>
+            
+            <div>
+                <div class="card">
+                    <h3>System Logs</h3>
+                    <div class="log-display" id="log-display">Cellular monitoring system active...
+Diag device: /dev/diag - ACTIVE
+IMSI catcher detection: ENABLED
+Real-time packet capture: RUNNING
+
+[12:34:56] Scanning cellular bands...
+[12:35:01] Connected to LTE band 4
+[12:35:10] Signal strength: -95dBm
+[12:35:15] Monitoring for suspicious activity...</div>
+                    
+                    <div class="btn-group">
+                        <button class="btn" onclick="refreshLogs()">Refresh Logs</button>
+                        <button class="btn" onclick="showCaptures()">Show Captures</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="features">
+            <div class="feature-item">
+                <h4>🔒 Security Monitoring</h4>
+                <p>Continuous monitoring for cellular threats</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>📊 Real-time Alerts</h4>
+                <p>Immediate notifications of suspicious cellular activity</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>📈 Network Analysis</h4>
+                <p>Comprehensive analysis of cellular network behavior</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>🌐 Captive Portal</h4>
+                <p>Detection of rogue captive portals</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 Rayhunter Project | Advanced Cellular Security</p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script>
+        // Variables
+        let eventSource = null;
+        let alerts = [];
+        let map = null;
+        let markers = {};
+        let activeAlertId = null;
+        let polyline = null;
+        
+        // Default NYC coordinates
+        const DEFAULT_LAT = 40.7506;
+        const DEFAULT_LON = -73.9935;
+        
+        // Initialize map and connect to SSE immediately on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing map and SSE connection');
+            initMap();
+            connectToAlertSSE();
+            
+            // Add event listener for clear alerts button
+            document.getElementById('clear-alerts-btn').addEventListener('click', function() {
+                clearAlerts();
+            });
+            
+            // Add event listeners for confirmation modal
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                hideClearConfirmation();
+            });
+            
+            document.getElementById('confirm-btn').addEventListener('click', function() {
+                clearAlertsConfirmed();
+            });
+            
+            // Close modal when clicking outside of it
+            document.getElementById('confirmation-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideClearConfirmation();
+                }
+            });
+            
+            // Set up event delegation for remove and map buttons
+            const alertsContainer = document.getElementById('alerts-container');
+            alertsContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-alert-btn')) {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    console.log('Remove button clicked for alert:', alertId);
+                    removeAlert(alertId);
+                } else if (e.target.classList.contains('map-btn')) {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    console.log('Map button clicked for alert:', alertId);
+                    focusAlertOnMap(alertId);
+                }
+            });
+        });
+        
+        // Initialize map
+        function initMap() {
+            console.log('Initializing map');
+            try {
+                map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LON], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                
+                // Force map to update its size
+                setTimeout(() => {
+                    console.log('Invalidating map size');
+                    map.invalidateSize();
+                }, 500);
+                
+                console.log('Map initialized successfully');
+            } catch (error) {
+                console.error('Error initializing map:', error);
+            }
+        }
+        
+        // Focus map on a specific alert location
+        function focusAlertOnMap(alertId) {
+            console.log('Focusing map on alert:', alertId);
+            
+            // Find the alert in the array
+            const alert = alerts.find(a => a.id == alertId);
+            if (!alert) {
+                console.error('Alert not found:', alertId);
+                return;
+            }
+            
+            // Remove active class from all alerts
+            document.querySelectorAll('.alert').forEach(el => {
+                el.classList.remove('alert-active');
+            });
+            
+            // Mark alert as active
+            const alertEl = document.getElementById(`alert-${alertId}`);
+            if (alertEl) {
+                alertEl.classList.add('alert-active');
+                // Scroll the alert into view
+                alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            
+            activeAlertId = alertId;
+            
+            // Center map on alert location
+            if (alert.location && alert.location.length === 2) {
+                const [lat, lon] = alert.location;
+                map.setView([lat, lon], 16); // Zoom in closer for better detail
+                
+                // Open marker popup if it exists
+                if (markers[alertId]) {
+                    markers[alertId].marker.openPopup();
+                }
+                
+                // Scroll to map section
+                document.getElementById('map-container').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+            
+            // Force map to update its size
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+        
+        // Highlight a specific alert and its marker
+        function highlightAlert(alertId) {
+            console.log('Highlighting alert:', alertId);
+            
+            // Remove active class from all alerts
+            document.querySelectorAll('.alert').forEach(el => {
+                el.classList.remove('alert-active');
+            });
+            
+            // Mark alert as active
+            const alertEl = document.getElementById(`alert-${alertId}`);
+            if (alertEl) {
+                alertEl.classList.add('alert-active');
+                // Scroll the alert into view
+                alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            
+            activeAlertId = alertId;
+            
+            // Center on marker if exists
+            if (markers[alertId]) {
+                map.setView(markers[alertId].marker.getLatLng(), 15);
+                markers[alertId].marker.openPopup();
+            }
+            
+            // Force map to update its size
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+        
+        // Add marker to map
+        function addMarker(alert, alertId) {
+            console.log('Adding marker for alert:', alertId);
+            
+            // Use alert.location if available, otherwise default to NYC coordinates
+            let lat, lon;
+            if (alert.location) {
+                [lat, lon] = alert.location;
+            } else {
+                lat = DEFAULT_LAT;
+                lon = DEFAULT_LON;
+                console.log('No location data in alert, using default NYC coordinates');
+            }
+            
+            // Determine marker color based on severity
+            let markerColor;
+            switch (alert.event_type.toLowerCase()) {
+                case 'high':
+                    markerColor = '#f44336';
+                    break;
+                case 'medium':
+                    markerColor = '#ffc107';
+                    break;
+                case 'low':
+                    markerColor = '#4caf50';
+                    break;
+                default:
+                    markerColor = '#2196F3';
+            }
+            
+            // Create custom icon - much larger and more prominent
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.7); position: relative;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                        ${alert.event_type.charAt(0).toUpperCase()}
+                    </div>
+                </div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            
+            // Create marker
+            const marker = L.marker([lat, lon], { icon }).addTo(map);
+            
+            // Add radius circle around the marker
+            const radiusCircle = L.circle([lat, lon], {
+                color: markerColor,
+                fillColor: markerColor,
+                fillOpacity: 0.1,
+                radius: 100, // 100 meter radius
+                weight: 2,
+                opacity: 0.8
+            }).addTo(map);
+            
+            // Store both marker and circle
+            markers[alertId] = { marker, circle: radiusCircle };
+            
+            // Add detailed popup with attack information
+            const timestamp = new Date(alert.timestamp).toLocaleString();
+            const popupContent = `
+                <div style="min-width: 250px;">
+                    <div style="background: ${markerColor}; color: white; padding: 5px; margin: -10px -10px 10px -10px; border-radius: 5px 5px 0 0; text-align: center; font-weight: bold;">
+                        ${alert.event_type.toUpperCase()} SEVERITY ATTACK
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Alert Details:</strong><br>
+                        ${alert.message || 'No message provided'}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Detection Time:</strong><br>
+                        ${timestamp}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>GPS Coordinates:</strong><br>
+                        ${lat.toFixed(6)}, ${lon.toFixed(6)}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Alert ID:</strong><br>
+                        ${alert.id}
+                    </div>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <small style="color: #666;">Click outside to close</small>
+                    </div>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+            
+            // Update polyline connecting all markers
+            updatePolyline();
+            
+            // Make sure all markers are visible on the map
+            const bounds = L.latLngBounds([]);
+            for (const id in markers) {
+                bounds.extend(markers[id].marker.getLatLng());
+            }
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+        
+        // Update polyline connecting all markers
+        function updatePolyline() {
+            // Remove existing polyline
+            if (polyline) {
+                map.removeLayer(polyline);
+            }
+            
+            // Create array of points from markers
+            const points = Object.values(markers).map(markerData => markerData.marker.getLatLng());
+            
+            // Only create polyline if we have at least 2 points
+            if (points.length >= 2) {
+                polyline = L.polyline(points, {
+                    color: '#6c5ce7',
+                    weight: 2,
+                    opacity: 0.7,
+                    dashArray: '5, 10'
+                }).addTo(map);
+            }
+        }
+        
+        // Connect to SSE endpoint for alerts
+        function connectToAlertSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            console.log('Connecting to alert SSE endpoint...');
+            eventSource = new EventSource('/api/attack-alerts');
+            
+            eventSource.onopen = () => {
+                console.log('Alert SSE connected!');
+                document.getElementById('alert-status-indicator').className = 'status-connected';
+                document.getElementById('alert-status-text').textContent = 'Connected';
+                showMessage('Alert system connected');
+            };
+            
+            eventSource.onmessage = (event) => {
+                console.log('Received alert:', event.data);
+                try {
+                    const alert = JSON.parse(event.data);
+                    console.log('Parsed alert object:', alert);
+                    
+                    const alertId = Date.now(); // Use timestamp as unique ID
+                    alert.id = alertId; // Add ID to alert object
+                    console.log('Alert ID assigned:', alertId);
+                    
+                    // Add default message if none exists
+                    if (!alert.message) {
+                        alert.message = `Rayhunter has detected a ${alert.event_type} severity event`;
+                    }
+                    
+                    // Add to alerts array
+                    alerts.push(alert);
+                    console.log('Alert added to array. Current alerts:', alerts);
+                    
+                    // Always add marker to map (with default location if needed)
+                    addMarker(alert, alertId);
+                    console.log('Marker added to map');
+                    
+                    // Show toast notification for new alert
+                    const severity = alert.event_type.toLowerCase();
+                    showMessage(`${severity.toUpperCase()} ALERT: ${alert.message}`, severity);
+                    console.log('Toast notification shown');
+                    
+                    // Render all alerts
+                    console.log('Calling renderAlerts...');
+                    renderAlerts();
+                    
+                    console.log(`Alert added to array. Total alerts: ${alerts.length}`);
+                } catch (error) {
+                    console.error('Error parsing alert:', error);
+                }
+            };
+            
+            eventSource.onerror = () => {
+                console.log('Alert SSE connection error');
+                document.getElementById('alert-status-indicator').className = 'status-disconnected';
+                document.getElementById('alert-status-text').textContent = 'Disconnected';
+                
+                // Try to reconnect after 5 seconds
+                setTimeout(connectToAlertSSE, 5000);
+            };
+        }
+        
+        // Render alerts in the UI - Fixed version from debug_alerts.html
+        function renderAlerts() {
+            console.log(`Rendering ${alerts.length} alerts`);
+            
+            const alertsContainer = document.getElementById('alerts-container');
+            console.log('Alerts container found:', alertsContainer);
+            
+            if (!alerts || alerts.length === 0) {
+                console.log('No alerts to display');
+                alertsContainer.innerHTML = '<p id="no-alerts-message">No alerts detected yet.</p>';
+                // Reset height to minimum when no alerts
+                alertsContainer.style.height = 'auto';
+                return;
+            }
+            
+            console.log('Starting to render alerts...');
+            
+            // Clear container
+            alertsContainer.innerHTML = '';
+            console.log('Container cleared');
+            
+            // Add each alert in reverse order (newest first)
+            alerts.slice().reverse().forEach((alert, index) => {
+                console.log(`Creating alert element ${index + 1} for:`, alert);
+                
+                try {
+                    const alertEl = document.createElement('div');
+                    alertEl.id = `alert-${alert.id}`;
+                    alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
+                    alertEl.onclick = () => highlightAlert(alert.id);
+                    
+                    const timestamp = alert.timestamp ? new Date(alert.timestamp).toLocaleString() : new Date().toLocaleString();
+                    
+                    // Create the alert content
+                    const alertContent = document.createElement('div');
+                    alertContent.innerHTML = `
+                        <strong>${alerts.length - index}. ${alert.event_type} Alert</strong><br>
+                        ${alert.message || 'No message'}<br>
+                        <div class="alert-time">Time: ${timestamp}</div>
+                        ${alert.location ? `<div class="alert-location">Location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}</div>` : ''}
+                    `;
+                    
+                    // Create the map button
+                    const mapBtn = document.createElement('button');
+                    mapBtn.textContent = 'Map';
+                    mapBtn.style.cssText = 'background: #6c5ce7; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px; margin-right: 5px;';
+                    mapBtn.setAttribute('data-alert-id', alert.id);
+                    mapBtn.className = 'map-btn';
+                    
+                    // Create the remove button
+                    const removeBtn = document.createElement('button');
+                    removeBtn.textContent = 'Remove';
+                    removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;';
+                    removeBtn.setAttribute('data-alert-id', alert.id);
+                    removeBtn.className = 'remove-alert-btn';
+                    
+                    // Add content and buttons to alert element
+                    alertEl.appendChild(alertContent);
+                    alertEl.appendChild(mapBtn);
+                    alertEl.appendChild(removeBtn);
+                    
+                    alertsContainer.appendChild(alertEl);
+                    console.log(`Alert element ${index + 1} added to container`);
+                } catch (error) {
+                    console.error(`Error creating alert element ${index + 1}:`, error);
+                }
+            });
+            
+            // Calculate dynamic height based on number of alerts
+            const alertHeight = 120; // Approximate height per alert
+            const maxVisibleAlerts = 4;
+            let containerHeight;
+            
+            if (alerts.length <= maxVisibleAlerts) {
+                // For 4 or fewer alerts, grow container naturally
+                containerHeight = alerts.length * alertHeight;
+                alertsContainer.style.height = `${containerHeight}px`;
+                alertsContainer.style.overflowY = 'hidden'; // Hide scrollbar
+            } else {
+                // For 5+ alerts, set fixed height and force scrollbar
+                containerHeight = maxVisibleAlerts * alertHeight;
+                alertsContainer.style.height = `${containerHeight}px`;
+                alertsContainer.style.overflowY = 'scroll'; // Force scrollbar
+                
+                // Force Chrome to show scrollbar by ensuring content overflows
+                setTimeout(() => {
+                    alertsContainer.scrollTop = 1;
+                    alertsContainer.scrollTop = 0;
+                }, 100);
+            }
+            
+            // Scroll to the top of the alerts container to show newest alerts
+            alertsContainer.scrollTop = 0;
+            
+            console.log(`Rendered ${alerts.length} alerts with height ${containerHeight}px`);
+        }
+        
+        // Remove a specific alert
+        function removeAlert(alertId) {
+            console.log('Removing alert:', alertId);
+            console.log('Current alerts array:', alerts);
+            console.log('Looking for alert with ID:', alertId);
+            
+            // Find the alert in the array
+            const alertIndex = alerts.findIndex(alert => alert.id == alertId);
+            console.log('Found alert at index:', alertIndex);
+            
+            if (alertIndex === -1) {
+                console.error('Alert not found in array:', alertId);
+                showMessage('Error: Alert not found');
+                return;
+            }
+            
+            // Remove marker and circle if exists
+            if (markers[alertId]) {
+                map.removeLayer(markers[alertId].marker);
+                map.removeLayer(markers[alertId].circle);
+                delete markers[alertId];
+                
+                // Update polyline after removing marker
+                updatePolyline();
+            }
+            
+            // Remove alert from array
+            alerts.splice(alertIndex, 1);
+            console.log('Alert removed from array. New length:', alerts.length);
+            
+            // Re-render alerts
+            renderAlerts();
+            
+            // Clear active alert if removed
+            if (activeAlertId === alertId) {
+                activeAlertId = null;
+            }
+            
+            // Show confirmation message
+            showMessage(`Alert removed`);
+            
+            console.log(`Alert ${alertId} removed. Total alerts: ${alerts.length}`);
+        }
+        
+        // Dismiss a specific alert (alias for removeAlert)
+        function dismissAlert(alertId) {
+            removeAlert(alertId);
+        }
+        
+        // Show confirmation modal for clearing alerts
+        function showClearConfirmation() {
+            const modal = document.getElementById('confirmation-modal');
+            modal.style.display = 'block';
+        }
+        
+        // Hide confirmation modal
+        function hideClearConfirmation() {
+            const modal = document.getElementById('confirmation-modal');
+            modal.style.display = 'none';
+        }
+        
+        // Clear all alerts (called after confirmation)
+        function clearAlertsConfirmed() {
+            console.log('Clearing all alerts...');
+            
+            // Remove all markers and circles if map exists
+            if (map) {
+                console.log('Removing all markers and circles from map');
+                Object.keys(markers).forEach(id => {
+                    map.removeLayer(markers[id].marker);
+                    map.removeLayer(markers[id].circle);
+                });
+                markers = {};
+                
+                // Remove polyline
+                if (polyline) {
+                    map.removeLayer(polyline);
+                    polyline = null;
+                }
+            }
+            
+            // Clear alerts array
+            console.log(`Clearing alerts array. Had ${alerts.length} alerts`);
+            alerts = [];
+            
+            // Update the UI
+            renderAlerts();
+            
+            // Clear active alert
+            activeAlertId = null;
+            
+            // Hide the modal
+            hideClearConfirmation();
+            
+            // Show confirmation message
+            showMessage('Alerts cleared');
+            
+            console.log('All alerts cleared');
+        }
+        
+        // Clear all alerts (legacy function - now shows confirmation)
+        function clearAlerts() {
+            showClearConfirmation();
+        }
+        
+        function refreshStatus() {
+            document.getElementById('cellular-status').textContent = "ACTIVE";
+            document.getElementById('diag-status').textContent = "CONNECTED";
+            document.getElementById('capture-count').textContent = Math.floor(Math.random() * 10000) + 5000;
+            showMessage('Status refreshed');
+        }
+        
+        function refreshLogs() {
+            const logDisplay = document.getElementById('log-display');
+            logDisplay.innerHTML = `Cellular monitoring system active...
+Diag device: /dev/diag - ACTIVE
+IMSI catcher detection: ENABLED
+Real-time packet capture: RUNNING
+
+[${new Date().toLocaleTimeString()}] Scanning cellular bands...
+[${new Date().toLocaleTimeString()}] Connected to LTE band ${Math.floor(Math.random() * 70) + 1}
+[${new Date().toLocaleTimeString()}] Signal strength: -${Math.floor(Math.random() * 30) + 80}dBm
+[${new Date().toLocaleTimeString()}] Monitoring for suspicious activity...`;
+            showMessage('Logs refreshed');
+        }
+        
+        function showCaptures() {
+            const logDisplay = document.getElementById('log-display');
+            logDisplay.innerHTML = `Capture system active - ${Math.floor(Math.random() * 10) + 5} captures stored
+
+
+Active captures include:
+- 2G/3G/4G/5G cellular packets
+- Cell broadcast messages
+- RRC connection messages
+- NAS security messages
+- SIB decoding results
+
+[${new Date().toLocaleTimeString()}] Last capture: ${Math.floor(Math.random() * 60) + 1} seconds ago`;
+            showMessage('Capture information displayed');
+        }
+        
+        function showMessage(msg, type = 'success') {
+            // Create temporary message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'toast';
+            
+            // Set color based on type
+            if (type === 'high') {
+                messageDiv.style.background = '#dc3545';
+            } else if (type === 'medium') {
+                messageDiv.style.background = '#fd7e14';
+            } else if (type === 'low') {
+                messageDiv.style.background = '#ffc107';
+                messageDiv.style.color = '#212529';
+            }
+            
+            messageDiv.textContent = msg;
+            document.body.appendChild(messageDiv);
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                if (document.body.contains(messageDiv)) {
+                    document.body.removeChild(messageDiv);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
