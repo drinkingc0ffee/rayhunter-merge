@@ -91,3 +91,4 @@ echo ""
 echo "Check your web UI for alerts and browser notifications"
 echo "Navigate to: http://localhost:8080/fs/debug_sse_minimal.html"
 echo "================================="
+

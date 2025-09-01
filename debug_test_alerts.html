@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rayhunter Test Alerts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .coordinates {
+            display: flex;
+            gap: 10px;
+        }
+        .coordinates input {
+            width: 50%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .preset-buttons button {
+            flex: 1;
+        }
+        .high {
+            background-color: #dc3545;
+        }
+        .high:hover {
+            background-color: #c82333;
+        }
+        .medium {
+            background-color: #fd7e14;
+        }
+        .medium:hover {
+            background-color: #e76b00;
+        }
+        .low {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .low:hover {
+            background-color: #e0a800;
+            color: #212529;
+        }
+        .sse-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .sse-status span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .connected {
+            background-color: #28a745;
+        }
+        .disconnected {
+            background-color: #dc3545;
+        }
+        .alerts {
+            margin-top: 20px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ccc;
+            background-color: #f8f9fa;
+        }
+        .alert-high {
+            border-left-color: #dc3545;
+        }
+        .alert-medium {
+            border-left-color: #fd7e14;
+        }
+        .alert-low {
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rayhunter Test Alerts</h1>
+        
+        <div class="sse-status">
+            <span id="sse-indicator" class="disconnected"></span>
+            <span id="sse-status-text">SSE: Disconnected</span>
+        </div>
+        
+        <div class="preset-buttons">
+            <button class="high" onclick="sendPresetAlert('High')">High Alert</button>
+            <button class="medium" onclick="sendPresetAlert('Medium')">Medium Alert</button>
+            <button class="low" onclick="sendPresetAlert('Low')">Low Alert</button>
+        </div>
+        
+        <h2>Custom Alert</h2>
+        <form id="alert-form">
+            <div class="form-group">
+                <label for="severity">Severity:</label>
+                <select id="severity" name="severity" required>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message (optional):</label>
+                <textarea id="message" name="message" rows="2"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Location:</label>
+                <div class="coordinates">
+                    <input type="number" id="latitude" name="latitude" step="0.000001" placeholder="Latitude" value="40.7506">
+                    <input type="number" id="longitude" name="longitude" step="0.000001" placeholder="Longitude" value="-73.9935">
+                </div>
+            </div>
+            
+            <button type="submit">Send Alert</button>
+        </form>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <h2>Log</h2>
+        <div id="log" class="log"></div>
+        
+        <h2>Received Alerts</h2>
+        <div id="alerts" class="alerts"></div>
+    </div>
+
+    <script>
+        // Constants
+        const NYC_LAT = 40.7506;
+        const NYC_LON = -73.9935;
+        
+        // Elements
+        const form = document.getElementById('alert-form');
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const alertsEl = document.getElementById('alerts');
+        const sseIndicator = document.getElementById('sse-indicator');
+        const sseStatusText = document.getElementById('sse-status-text');
+        
+        // Variables
+        let eventSource = null;
+        let alerts = [];
+        
+        // Functions
+        function log(message) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timeString}] ${message}`;
+            logEl.appendChild(logEntry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function showStatus(message, isSuccess) {
+            statusEl.textContent = message;
+            statusEl.className = isSuccess ? 'status success' : 'status error';
+            statusEl.style.display = 'block';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            log('Connecting to SSE endpoint...');
+            eventSource = new EventSource('/api/attack-alerts');
+            
+            eventSource.onopen = () => {
+                log('SSE connected!');
+                sseIndicator.className = 'connected';
+                sseStatusText.textContent = 'SSE: Connected';
+            };
+            
+            eventSource.onmessage = (event) => {
+                log(`Received alert: ${event.data}`);
+                try {
+                    const alert = JSON.parse(event.data);
+                    alerts.unshift(alert);
+                    renderAlerts();
+                } catch (error) {
+                    log(`Parse error: ${error.message}`);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                log(`SSE connection error`);
+                sseIndicator.className = 'disconnected';
+                sseStatusText.textContent = 'SSE: Error';
+                
+                // Try to reconnect after 5 seconds
+                setTimeout(connectSSE, 5000);
+            };
+        }
+        
+        function renderAlerts() {
+            alertsEl.innerHTML = '';
+            
+            if (alerts.length === 0) {
+                alertsEl.innerHTML = '<p>No alerts received</p>';
+                return;
+            }
+            
+            alerts.slice(0, 10).forEach(alert => {
+                const alertEl = document.createElement('div');
+                alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
+                
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                const location = alert.location ? 
+                    `Location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}` : 
+                    'No location data';
+                
+                alertEl.innerHTML = `
+                    <strong>${alert.event_type}</strong> - ${timestamp}<br>
+                    ${alert.message}<br>
+                    <small>${location}</small>
+                `;
+                
+                alertsEl.appendChild(alertEl);
+            });
+        }
+        
+        function sendAlert(severity, message, latitude, longitude) {
+            const payload = {
+                severity: severity
+            };
+            
+            if (message) {
+                payload.message = message;
+            }
+            
+            if (latitude !== null && longitude !== null) {
+                payload.location = [parseFloat(latitude), parseFloat(longitude)];
+            }
+            
+            log(`Sending ${severity} alert${message ? ': ' + message : ''}`);
+            
+            fetch('/api/debug/test-alert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.text();
+                } else {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+            })
+            .then(text => {
+                log(`Alert sent successfully: ${text}`);
+                showStatus('Alert sent successfully', true);
+            })
+            .catch(error => {
+                log(`Error sending alert: ${error.message}`);
+                showStatus(`Error sending alert: ${error.message}`, false);
+            });
+        }
+        
+        function sendPresetAlert(severity) {
+            const message = `Test ${severity} alert from preset button`;
+            sendAlert(severity, message, NYC_LAT, NYC_LON);
+        }
+        
+        // Event listeners
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            
+            const severity = document.getElementById('severity').value;
+            const message = document.getElementById('message').value;
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            
+            sendAlert(severity, message, latitude, longitude);
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectSSE();
+            renderAlerts();
+            log('Page loaded');
+        });
+    </script>
+</body>
+</html>
+
+

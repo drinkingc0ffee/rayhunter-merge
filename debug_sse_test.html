@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .alert {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #ccc;
+        }
+        .alert-high {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .alert-medium {
+            border-left-color: #fd7e14;
+            background-color: #fff3cd;
+        }
+        .alert-low {
+            border-left-color: #ffc107;
+            background-color: #fff3cd;
+        }
+        .alert-info {
+            border-left-color: #17a2b8;
+            background-color: #d1ecf1;
+        }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .alert-severity {
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .alert-time {
+            color: #666;
+        }
+        .alert-location {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSE Debug Test</h1>
+        
+        <div id="status" class="status disconnected">
+            Status: Disconnected
+        </div>
+        
+        <div class="controls">
+            <button id="connect">Connect</button>
+            <button id="disconnect">Disconnect</button>
+            <button id="clear">Clear Alerts</button>
+        </div>
+        
+        <h2>Test Alerts</h2>
+        <div class="controls">
+            <button id="test-high">Test High</button>
+            <button id="test-medium">Test Medium</button>
+            <button id="test-low">Test Low</button>
+        </div>
+        
+        <h2>Received Alerts</h2>
+        <div id="alerts"></div>
+        
+        <h2>Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        // Constants
+        const NYC_LAT = 40.7506;
+        const NYC_LON = -73.9935;
+        
+        // Elements
+        const statusEl = document.getElementById('status');
+        const connectBtn = document.getElementById('connect');
+        const disconnectBtn = document.getElementById('disconnect');
+        const clearBtn = document.getElementById('clear');
+        const testHighBtn = document.getElementById('test-high');
+        const testMediumBtn = document.getElementById('test-medium');
+        const testLowBtn = document.getElementById('test-low');
+        const alertsEl = document.getElementById('alerts');
+        const logEl = document.getElementById('log');
+        
+        // Variables
+        let eventSource = null;
+        let alerts = [];
+        
+        // Functions
+        function log(message) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${timeString}] ${message}`;
+            logEl.appendChild(logEntry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            log('Connecting to SSE endpoint...');
+            eventSource = new EventSource('/api/attack-alerts');
+            
+            eventSource.onopen = () => {
+                log('Connected!');
+                statusEl.textContent = 'Status: Connected';
+                statusEl.className = 'status connected';
+            };
+            
+            eventSource.onmessage = (event) => {
+                log(`Received: ${event.data}`);
+                try {
+                    const alert = JSON.parse(event.data);
+                    alerts.unshift(alert);
+                    renderAlerts();
+                } catch (error) {
+                    log(`Parse error: ${error.message}`);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                log(`Connection error: ${error.type}`);
+                statusEl.textContent = 'Status: Error';
+                statusEl.className = 'status disconnected';
+            };
+        }
+        
+        function disconnectSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                log('Disconnected from SSE endpoint');
+                statusEl.textContent = 'Status: Disconnected';
+                statusEl.className = 'status disconnected';
+            }
+        }
+        
+        function clearAlerts() {
+            alerts = [];
+            renderAlerts();
+            log('Alerts cleared');
+        }
+        
+        function renderAlerts() {
+            alertsEl.innerHTML = '';
+            
+            if (alerts.length === 0) {
+                const noAlerts = document.createElement('div');
+                noAlerts.textContent = 'No alerts received';
+                alertsEl.appendChild(noAlerts);
+                return;
+            }
+            
+            alerts.forEach(alert => {
+                const alertEl = document.createElement('div');
+                alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
+                
+                const headerEl = document.createElement('div');
+                headerEl.className = 'alert-header';
+                
+                const severityEl = document.createElement('span');
+                severityEl.className = 'alert-severity';
+                severityEl.textContent = alert.event_type;
+                
+                const timeEl = document.createElement('span');
+                timeEl.className = 'alert-time';
+                timeEl.textContent = new Date(alert.timestamp).toLocaleString();
+                
+                headerEl.appendChild(severityEl);
+                headerEl.appendChild(timeEl);
+                
+                const messageEl = document.createElement('div');
+                messageEl.textContent = alert.message;
+                
+                alertEl.appendChild(headerEl);
+                alertEl.appendChild(messageEl);
+                
+                if (alert.location) {
+                    const locationEl = document.createElement('div');
+                    locationEl.className = 'alert-location';
+                    locationEl.textContent = `Location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}`;
+                    alertEl.appendChild(locationEl);
+                }
+                
+                alertsEl.appendChild(alertEl);
+            });
+        }
+        
+        function sendAlert(severity) {
+            log(`Sending test ${severity} alert...`);
+            
+            fetch('/api/debug/display-state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "WarningDetected": {
+                        "event_type": severity,
+                        "location": [NYC_LAT, NYC_LON]
+                    }
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    log(`${severity} alert sent successfully with coordinates (${NYC_LAT}, ${NYC_LON})`);
+                } else {
+                    log(`Error sending ${severity} alert: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                log(`Error sending ${severity} alert: ${error.message}`);
+            });
+        }
+        
+        // Event Listeners
+        connectBtn.addEventListener('click', connectSSE);
+        disconnectBtn.addEventListener('click', disconnectSSE);
+        clearBtn.addEventListener('click', clearAlerts);
+        testHighBtn.addEventListener('click', () => sendAlert('High'));
+        testMediumBtn.addEventListener('click', () => sendAlert('Medium'));
+        testLowBtn.addEventListener('click', () => sendAlert('Low'));
+        
+        // Initial setup
+        renderAlerts();
+        log('Page loaded');
+    </script>
+</body>
+</html>
+
+

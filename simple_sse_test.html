@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple SSE Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .log {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple SSE Test</h1>
+    
+    <div id="status" class="status disconnected">Status: Disconnected</div>
+    
+    <button id="connect">Connect</button>
+    <button id="disconnect">Disconnect</button>
+    
+    <h2>Log</h2>
+    <div id="log" class="log"></div>
+    
+    <script>
+        // Elements
+        const statusEl = document.getElementById('status');
+        const connectBtn = document.getElementById('connect');
+        const disconnectBtn = document.getElementById('disconnect');
+        const logEl = document.getElementById('log');
+        
+        // Variables
+        let eventSource = null;
+        
+        // Functions
+        function log(message) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timeString}] ${message}`;
+            logEl.appendChild(logEntry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            log('Connecting to SSE endpoint...');
+            eventSource = new EventSource('/api/attack-alerts');
+            
+            eventSource.onopen = () => {
+                log('Connected!');
+                statusEl.textContent = 'Status: Connected';
+                statusEl.className = 'status connected';
+            };
+            
+            eventSource.onmessage = (event) => {
+                log(`Received: ${event.data}`);
+                try {
+                    const alert = JSON.parse(event.data);
+                    log(`Alert type: ${alert.event_type}, Message: ${alert.message}`);
+                } catch (error) {
+                    log(`Parse error: ${error.message}`);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                log(`Connection error: ${error.type}`);
+                statusEl.textContent = 'Status: Error';
+                statusEl.className = 'status disconnected';
+            };
+        }
+        
+        function disconnectSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                log('Disconnected from SSE endpoint');
+                statusEl.textContent = 'Status: Disconnected';
+                statusEl.className = 'status disconnected';
+            }
+        }
+        
+        // Event Listeners
+        connectBtn.addEventListener('click', connectSSE);
+        disconnectBtn.addEventListener('click', disconnectSSE);
+        
+        // Initialize
+        log('Page loaded');
+    </script>
+</body>
+</html>
+
+

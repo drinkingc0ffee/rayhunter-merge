@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSE Debug - With Map</title>
+    <title>SSE Debug - Line of Alerts</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
         .status { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
@@ -16,9 +16,10 @@
         .low { border-left-color: yellow; background-color: #ffffee; }
         pre { background-color: #f0f0f0; padding: 10px; overflow-x: auto; }
         #map { height: 300px; margin-top: 20px; border: 1px solid #ccc; }
-        .map-container { display: none; margin-top: 20px; }
-        .map-container.has-location { display: block; }
+        .map-container { margin-top: 20px; }
         .location-info { margin-top: 10px; font-size: 0.9em; color: #666; }
+        .controls { margin-top: 20px; }
+        button { margin-right: 10px; padding: 8px 16px; cursor: pointer; }
     </style>
     <!-- Include Leaflet CSS and JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -29,16 +30,18 @@
           crossorigin=""></script>
 </head>
 <body>
-    <h1>SSE Debug - With Map</h1>
+    <h1>SSE Debug - Line of Alerts</h1>
     
     <div>
         <h2>Connection: <span id="status-text">Disconnected</span> <span id="status" class="status disconnected"></span></h2>
         <button id="connect">Connect</button>
         <button id="disconnect" disabled>Disconnect</button>
-        <button id="test-high">Test High</button>
-        <button id="test-medium">Test Medium</button>
-        <button id="test-low">Test Low</button>
         <button id="clear">Clear</button>
+    </div>
+    
+    <div class="controls">
+        <button id="send-line">Send Line of Alerts</button>
+        <span id="progress"></span>
     </div>
     
     <div id="alerts"></div>
@@ -59,29 +62,54 @@
         const statusTextEl = document.getElementById('status-text');
         const connectBtn = document.getElementById('connect');
         const disconnectBtn = document.getElementById('disconnect');
-        const testHighBtn = document.getElementById('test-high');
-        const testMediumBtn = document.getElementById('test-medium');
-        const testLowBtn = document.getElementById('test-low');
+        const sendLineBtn = document.getElementById('send-line');
         const clearBtn = document.getElementById('clear');
+        const progressEl = document.getElementById('progress');
         const alertsEl = document.getElementById('alerts');
         const logEl = document.getElementById('log');
         const mapContainerEl = document.getElementById('map-container');
         const locationInfoEl = document.getElementById('location-info');
         
+        // New York City coordinates (40.7506° N, 73.9935° W)
+        const BASE_LAT = 40.7506;
+        const BASE_LON = -73.9935;
+        
+        // Calculate offsets (50 meters in degrees)
+        // 1 degree of latitude is approximately 111.32 km
+        // 1 degree of longitude is approximately 111.32 * cos(latitude) km
+        const METERS_PER_DEGREE_LAT = 111320;
+        const METERS_PER_DEGREE_LON = 111320 * Math.cos(BASE_LAT * Math.PI / 180);
+        
+        // 50 meters in degrees
+        const LAT_OFFSET = 50 / METERS_PER_DEGREE_LAT;
+        const LON_OFFSET = 50 / METERS_PER_DEGREE_LON;
+        
+        // Severities for the alerts
+        const SEVERITIES = ["High", "Medium", "Low", "Medium", "High", "Low"];
+        
         let eventSource = null;
         let alerts = [];
         let map = null;
         let markers = [];
+        let polyline = null;
         
-        // Initialize map
+        // Initialize map immediately
         function initMap() {
             if (map) return; // Map already initialized
             
-            map = L.map('map').setView([40.7506, -73.9935], 13);
+            map = L.map('map').setView([BASE_LAT, BASE_LON], 18); // Zoom level 18 for better detail
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
+            
+            // Add a default marker at NYC
+            const marker = L.marker([BASE_LAT, BASE_LON]).addTo(map);
+            marker.bindPopup("<b>New York City</b><br>Starting point for line of alerts").openPopup();
+            locationInfoEl.textContent = `Starting point: ${BASE_LAT.toFixed(6)}, ${BASE_LON.toFixed(6)}`;
         }
+        
+        // Initialize map on page load
+        initMap();
         
         function updateStatus(status) {
             statusEl.className = `status ${status}`;
@@ -99,32 +127,38 @@
         function addMarker(alert) {
             if (!alert.location) return;
             
-            initMap();
-            
             // Create marker
             const marker = L.marker(alert.location).addTo(map);
             marker.bindPopup(`<b>${alert.event_type} Alert</b><br>${alert.message}<br>${new Date(alert.timestamp).toLocaleString()}`);
             markers.push(marker);
             
-            // Update map view to include all markers
-            if (markers.length > 1) {
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds());
-            } else {
-                map.setView(alert.location, 13);
-            }
-            
-            // Show map container
-            mapContainerEl.classList.add('has-location');
-            
             // Update location info
             locationInfoEl.textContent = `Latest location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}`;
+            
+            // Update polyline if we have multiple markers
+            updatePolyline();
+        }
+        
+        function updatePolyline() {
+            // Remove existing polyline
+            if (polyline) {
+                map.removeLayer(polyline);
+            }
+            
+            // Create new polyline if we have at least 2 markers
+            if (markers.length >= 2) {
+                const points = markers.map(marker => marker.getLatLng());
+                polyline = L.polyline(points, {color: 'red', weight: 3}).addTo(map);
+                
+                // Fit map to show all markers
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds());
+            }
         }
         
         function renderAlerts() {
             if (alerts.length === 0) {
                 alertsEl.innerHTML = '<p>No alerts</p>';
-                mapContainerEl.classList.remove('has-location');
                 return;
             }
             
@@ -168,12 +202,16 @@
             eventSource.onmessage = (event) => {
                 log(`Received: ${event.data}`);
                 try {
-                    const alert = JSON.parse(event.data);
-                    alerts.unshift(alert);
+                    // Parse the original alert
+                    const originalAlert = JSON.parse(event.data);
+                    
+                    // Add to alerts array
+                    alerts.unshift(originalAlert);
                     renderAlerts();
                     
-                    if (alert.location) {
-                        addMarker(alert);
+                    // If the alert has location data, add a marker
+                    if (originalAlert.location) {
+                        addMarker(originalAlert);
                     }
                 } catch (error) {
                     log(`Parse error: ${error.message}`);
@@ -195,52 +233,95 @@
             }
         }
         
-        function sendAlert(severity) {
-            log(`Sending test ${severity} alert...`);
+        async function sendAlert(severity, lat, lon) {
+            log(`Sending ${severity} alert at (${lat.toFixed(6)}, ${lon.toFixed(6)})...`);
             
-            // Create a form for the POST request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/debug/display-state';
-            form.style.display = 'none';
+            try {
+                // Use fetch with proper JSON content type
+                const response = await fetch('/api/debug/display-state', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "WarningDetected": { 
+                            "event_type": severity
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    log(`${severity} alert sent successfully`);
+                    
+                    // Create a synthetic alert with location data
+                    const alert = {
+                        timestamp: new Date().toISOString(),
+                        event_type: severity,
+                        message: `Rayhunter has detected a ${severity} severity event`,
+                        location: [lat, lon]
+                    };
+                    
+                    // Add the alert to the UI (client-side only)
+                    alerts.unshift(alert);
+                    renderAlerts();
+                    addMarker(alert);
+                    
+                    return true;
+                } else {
+                    log(`Error sending ${severity} alert: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                log(`Error sending ${severity} alert: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function sendLineOfAlerts() {
+            sendLineBtn.disabled = true;
+            progressEl.textContent = "Sending alerts...";
             
-            // Create a hidden input for the JSON data
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'data';
-            input.value = JSON.stringify({
-                "WarningDetected": { "event_type": severity }
-            });
+            // Send alerts in a line (eastward direction)
+            for (let i = 0; i < SEVERITIES.length; i++) {
+                // Calculate coordinates
+                const lat = BASE_LAT;
+                const lon = BASE_LON + (i * LON_OFFSET);
+                
+                // Send alert
+                await sendAlert(SEVERITIES[i], lat, lon);
+                
+                // Update progress
+                progressEl.textContent = `Sent ${i + 1} of ${SEVERITIES.length} alerts`;
+                
+                // Wait a bit between alerts
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             
-            // Add the input to the form and submit
-            form.appendChild(input);
-            document.body.appendChild(form);
-            
-            // Log the action
-            log(`Sending ${severity} alert via form submission`);
-            
-            // Submit the form
-            form.submit();
-            
-            // Remove the form after submission
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 1000);
+            progressEl.textContent = "All alerts sent!";
+            sendLineBtn.disabled = false;
         }
         
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', disconnect);
-        testHighBtn.addEventListener('click', () => sendAlert('High'));
-        testMediumBtn.addEventListener('click', () => sendAlert('Medium'));
-        testLowBtn.addEventListener('click', () => sendAlert('Low'));
+        sendLineBtn.addEventListener('click', sendLineOfAlerts);
         clearBtn.addEventListener('click', () => {
             alerts = [];
             renderAlerts();
             
-            // Clear map markers
+            // Clear map markers except the default one
             if (map) {
                 markers.forEach(marker => map.removeLayer(marker));
                 markers = [];
+                
+                // Remove polyline
+                if (polyline) {
+                    map.removeLayer(polyline);
+                    polyline = null;
+                }
+                
+                // Reset view to NYC
+                map.setView([BASE_LAT, BASE_LON], 18);
+                locationInfoEl.textContent = `Starting point: ${BASE_LAT.toFixed(6)}, ${BASE_LON.toFixed(6)}`;
             }
             
             log('Alerts cleared');
@@ -248,7 +329,9 @@
         
         renderAlerts();
         log('Page loaded');
+        log('LINE OF ALERTS MODE: This page will send alerts in a straight line, 50 meters apart');
     </script>
 </body>
 </html>
+
 

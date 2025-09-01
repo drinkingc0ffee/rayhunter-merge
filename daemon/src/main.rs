@@ -14,6 +14,7 @@ mod gps_logger;
 mod gps_lookup;
 mod stats;
 mod gps_v2;
+mod test_alerts;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -29,6 +30,7 @@ use crate::server::{
     get_config, get_gps, get_qmdl, get_zip, set_config, debug_set_display_state, ServerState, serve_static,
     get_attack_alerts_sse, AlertEvent,
 };
+use crate::test_alerts::create_test_alert;
 use crate::server_fs::serve_fs_static;
 use crate::stats::{get_qmdl_manifest, get_system_stats};
 
@@ -74,6 +76,7 @@ fn get_router() -> AppRouter {
         .route("/api/config", get(get_config))
         .route("/api/config", post(set_config))
         .route("/api/debug/display-state", post(debug_set_display_state))
+        .route("/api/debug/test-alert", post(create_test_alert))
         .route("/api/attack-alerts", get(get_attack_alerts_sse))
         .route("/", get(|| async { Redirect::permanent("/index.html") }))
         .route("/fs/{*path}", get(serve_fs_static))

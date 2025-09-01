@@ -30,3 +30,4 @@ adb shell rootshell -c "'rm /tmp/debug_sse_minimal_with_map.html'"
 
 echo "Debug HTML file with map deployed successfully."
 echo "You can access it at: http://DEVICE_IP:8080/fs/debug_sse_minimal_with_map.html"
+

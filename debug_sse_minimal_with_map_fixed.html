@@ -68,6 +68,10 @@
         const mapContainerEl = document.getElementById('map-container');
         const locationInfoEl = document.getElementById('location-info');
         
+        // New York City coordinates (40.7506° N, 73.9935° W)
+        const NYC_LAT = 40.7506;
+        const NYC_LON = -73.9935;
+        
         let eventSource = null;
         let alerts = [];
         let map = null;
@@ -77,7 +81,7 @@
         function initMap() {
             if (map) return; // Map already initialized
             
-            map = L.map('map').setView([40.7506, -73.9935], 13);
+            map = L.map('map').setView([NYC_LAT, NYC_LON], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
@@ -198,34 +202,30 @@
         function sendAlert(severity) {
             log(`Sending test ${severity} alert...`);
             
-            // Create a form for the POST request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/debug/display-state';
-            form.style.display = 'none';
-            
-            // Create a hidden input for the JSON data
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'data';
-            input.value = JSON.stringify({
-                "WarningDetected": { "event_type": severity }
+            // Use fetch with proper JSON content type instead of form submission
+            // Include the NYC coordinates (40.7506° N, 73.9935° W)
+            fetch('/api/debug/display-state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "WarningDetected": { 
+                        "event_type": severity,
+                        "location": [NYC_LAT, NYC_LON]
+                    }
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    log(`${severity} alert sent successfully with coordinates (${NYC_LAT}, ${NYC_LON})`);
+                } else {
+                    log(`Error sending ${severity} alert: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                log(`Error sending ${severity} alert: ${error.message}`);
             });
-            
-            // Add the input to the form and submit
-            form.appendChild(input);
-            document.body.appendChild(form);
-            
-            // Log the action
-            log(`Sending ${severity} alert via form submission`);
-            
-            // Submit the form
-            form.submit();
-            
-            // Remove the form after submission
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 1000);
         }
         
         connectBtn.addEventListener('click', connect);
@@ -251,4 +251,3 @@
     </script>
 </body>
 </html>
-

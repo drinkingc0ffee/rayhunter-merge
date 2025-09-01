@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSE Debug - With Map</title>
+    <title>SSE Debug - With Map (Workaround)</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
         .status { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
@@ -16,8 +16,7 @@
         .low { border-left-color: yellow; background-color: #ffffee; }
         pre { background-color: #f0f0f0; padding: 10px; overflow-x: auto; }
         #map { height: 300px; margin-top: 20px; border: 1px solid #ccc; }
-        .map-container { display: none; margin-top: 20px; }
-        .map-container.has-location { display: block; }
+        .map-container { margin-top: 20px; }
         .location-info { margin-top: 10px; font-size: 0.9em; color: #666; }
     </style>
     <!-- Include Leaflet CSS and JS -->
@@ -29,7 +28,7 @@
           crossorigin=""></script>
 </head>
 <body>
-    <h1>SSE Debug - With Map</h1>
+    <h1>SSE Debug - With Map (Workaround)</h1>
     
     <div>
         <h2>Connection: <span id="status-text">Disconnected</span> <span id="status" class="status disconnected"></span></h2>
@@ -68,20 +67,32 @@
         const mapContainerEl = document.getElementById('map-container');
         const locationInfoEl = document.getElementById('location-info');
         
+        // New York City coordinates (40.7506° N, 73.9935° W)
+        const NYC_LAT = 40.7506;
+        const NYC_LON = -73.9935;
+        
         let eventSource = null;
         let alerts = [];
         let map = null;
         let markers = [];
         
-        // Initialize map
+        // Initialize map immediately
         function initMap() {
             if (map) return; // Map already initialized
             
-            map = L.map('map').setView([40.7506, -73.9935], 13);
+            map = L.map('map').setView([NYC_LAT, NYC_LON], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
+            
+            // Add a default marker at NYC
+            const marker = L.marker([NYC_LAT, NYC_LON]).addTo(map);
+            marker.bindPopup("<b>New York City</b><br>Default location for alerts").openPopup();
+            locationInfoEl.textContent = `Default location: ${NYC_LAT.toFixed(6)}, ${NYC_LON.toFixed(6)}`;
         }
+        
+        // Initialize map on page load
+        initMap();
         
         function updateStatus(status) {
             statusEl.className = `status ${status}`;
@@ -99,8 +110,6 @@
         function addMarker(alert) {
             if (!alert.location) return;
             
-            initMap();
-            
             // Create marker
             const marker = L.marker(alert.location).addTo(map);
             marker.bindPopup(`<b>${alert.event_type} Alert</b><br>${alert.message}<br>${new Date(alert.timestamp).toLocaleString()}`);
@@ -114,9 +123,6 @@
                 map.setView(alert.location, 13);
             }
             
-            // Show map container
-            mapContainerEl.classList.add('has-location');
-            
             // Update location info
             locationInfoEl.textContent = `Latest location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}`;
         }
@@ -124,7 +130,6 @@
         function renderAlerts() {
             if (alerts.length === 0) {
                 alertsEl.innerHTML = '<p>No alerts</p>';
-                mapContainerEl.classList.remove('has-location');
                 return;
             }
             
@@ -168,13 +173,22 @@
             eventSource.onmessage = (event) => {
                 log(`Received: ${event.data}`);
                 try {
-                    const alert = JSON.parse(event.data);
+                    // Parse the original alert
+                    const originalAlert = JSON.parse(event.data);
+                    
+                    // Create a new alert with the location data
+                    const alert = {
+                        ...originalAlert,
+                        // Add location if not present
+                        location: originalAlert.location || [NYC_LAT, NYC_LON]
+                    };
+                    
+                    // Add to alerts array
                     alerts.unshift(alert);
                     renderAlerts();
                     
-                    if (alert.location) {
-                        addMarker(alert);
-                    }
+                    // Always add marker since we always have location now
+                    addMarker(alert);
                 } catch (error) {
                     log(`Parse error: ${error.message}`);
                 }
@@ -198,34 +212,43 @@
         function sendAlert(severity) {
             log(`Sending test ${severity} alert...`);
             
-            // Create a form for the POST request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/debug/display-state';
-            form.style.display = 'none';
-            
-            // Create a hidden input for the JSON data
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'data';
-            input.value = JSON.stringify({
-                "WarningDetected": { "event_type": severity }
+            // Use fetch with proper JSON content type instead of form submission
+            fetch('/api/debug/display-state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "WarningDetected": { 
+                        "event_type": severity
+                    }
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    log(`${severity} alert sent successfully`);
+                    
+                    // Create a synthetic alert with location data
+                    const alert = {
+                        timestamp: new Date().toISOString(),
+                        event_type: severity,
+                        message: `Rayhunter has detected a ${severity} severity event`,
+                        location: [NYC_LAT, NYC_LON]
+                    };
+                    
+                    // Add the alert to the UI (client-side only)
+                    alerts.unshift(alert);
+                    renderAlerts();
+                    addMarker(alert);
+                    
+                    log(`Added synthetic alert with coordinates (${NYC_LAT}, ${NYC_LON})`);
+                } else {
+                    log(`Error sending ${severity} alert: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                log(`Error sending ${severity} alert: ${error.message}`);
             });
-            
-            // Add the input to the form and submit
-            form.appendChild(input);
-            document.body.appendChild(form);
-            
-            // Log the action
-            log(`Sending ${severity} alert via form submission`);
-            
-            // Submit the form
-            form.submit();
-            
-            // Remove the form after submission
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 1000);
         }
         
         connectBtn.addEventListener('click', connect);
@@ -237,10 +260,14 @@
             alerts = [];
             renderAlerts();
             
-            // Clear map markers
+            // Clear map markers except the default one
             if (map) {
                 markers.forEach(marker => map.removeLayer(marker));
                 markers = [];
+                
+                // Reset view to NYC
+                map.setView([NYC_LAT, NYC_LON], 13);
+                locationInfoEl.textContent = `Default location: ${NYC_LAT.toFixed(6)}, ${NYC_LON.toFixed(6)}`;
             }
             
             log('Alerts cleared');
@@ -248,7 +275,9 @@
         
         renderAlerts();
         log('Page loaded');
+        log('WORKAROUND MODE: This page will add location data client-side');
     </script>
 </body>
 </html>
+
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSE Debug - With Map</title>
+    <title>SSE Debug - Minimal</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
         .status { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
@@ -15,21 +15,10 @@
         .medium { border-left-color: orange; background-color: #fff8ee; }
         .low { border-left-color: yellow; background-color: #ffffee; }
         pre { background-color: #f0f0f0; padding: 10px; overflow-x: auto; }
-        #map { height: 300px; margin-top: 20px; border: 1px solid #ccc; }
-        .map-container { display: none; margin-top: 20px; }
-        .map-container.has-location { display: block; }
-        .location-info { margin-top: 10px; font-size: 0.9em; color: #666; }
     </style>
-    <!-- Include Leaflet CSS and JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-          crossorigin=""></script>
 </head>
 <body>
-    <h1>SSE Debug - With Map</h1>
+    <h1>SSE Debug - Minimal</h1>
     
     <div>
         <h2>Connection: <span id="status-text">Disconnected</span> <span id="status" class="status disconnected"></span></h2>
@@ -42,12 +31,6 @@
     </div>
     
     <div id="alerts"></div>
-    
-    <div class="map-container" id="map-container">
-        <h2>Alert Locations</h2>
-        <div id="map"></div>
-        <div class="location-info" id="location-info"></div>
-    </div>
     
     <div>
         <h3>Log</h3>
@@ -65,23 +48,13 @@
         const clearBtn = document.getElementById('clear');
         const alertsEl = document.getElementById('alerts');
         const logEl = document.getElementById('log');
-        const mapContainerEl = document.getElementById('map-container');
-        const locationInfoEl = document.getElementById('location-info');
+        
+        // New York City coordinates (40.7506° N, 73.9935° W)
+        const NYC_LAT = 40.7506;
+        const NYC_LON = -73.9935;
         
         let eventSource = null;
         let alerts = [];
-        let map = null;
-        let markers = [];
-        
-        // Initialize map
-        function initMap() {
-            if (map) return; // Map already initialized
-            
-            map = L.map('map').setView([40.7506, -73.9935], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-        }
         
         function updateStatus(status) {
             statusEl.className = `status ${status}`;
@@ -96,35 +69,9 @@
             logEl.scrollTop = logEl.scrollHeight;
         }
         
-        function addMarker(alert) {
-            if (!alert.location) return;
-            
-            initMap();
-            
-            // Create marker
-            const marker = L.marker(alert.location).addTo(map);
-            marker.bindPopup(`<b>${alert.event_type} Alert</b><br>${alert.message}<br>${new Date(alert.timestamp).toLocaleString()}`);
-            markers.push(marker);
-            
-            // Update map view to include all markers
-            if (markers.length > 1) {
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds());
-            } else {
-                map.setView(alert.location, 13);
-            }
-            
-            // Show map container
-            mapContainerEl.classList.add('has-location');
-            
-            // Update location info
-            locationInfoEl.textContent = `Latest location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}`;
-        }
-        
         function renderAlerts() {
             if (alerts.length === 0) {
                 alertsEl.innerHTML = '<p>No alerts</p>';
-                mapContainerEl.classList.remove('has-location');
                 return;
             }
             
@@ -171,10 +118,6 @@
                     const alert = JSON.parse(event.data);
                     alerts.unshift(alert);
                     renderAlerts();
-                    
-                    if (alert.location) {
-                        addMarker(alert);
-                    }
                 } catch (error) {
                     log(`Parse error: ${error.message}`);
                 }
@@ -195,54 +138,32 @@
             }
         }
         
-        function sendAlert(severity) {
+        function sendTestAlert(severity) {
             log(`Sending test ${severity} alert...`);
             
-            // Create a form for the POST request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/debug/display-state';
-            form.style.display = 'none';
-            
-            // Create a hidden input for the JSON data
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'data';
-            input.value = JSON.stringify({
-                "WarningDetected": { "event_type": severity }
-            });
-            
-            // Add the input to the form and submit
-            form.appendChild(input);
-            document.body.appendChild(form);
-            
-            // Log the action
-            log(`Sending ${severity} alert via form submission`);
-            
-            // Submit the form
-            form.submit();
-            
-            // Remove the form after submission
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 1000);
+            fetch('/api/debug/display-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    "WarningDetected": { 
+                        "event_type": severity,
+                        "location": [NYC_LAT, NYC_LON]
+                    }
+                })
+            })
+            .then(response => response.text())
+            .then(data => log(`Response: ${data} with coordinates (${NYC_LAT}, ${NYC_LON})`))
+            .catch(error => log(`Error: ${error.message}`));
         }
         
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', disconnect);
-        testHighBtn.addEventListener('click', () => sendAlert('High'));
-        testMediumBtn.addEventListener('click', () => sendAlert('Medium'));
-        testLowBtn.addEventListener('click', () => sendAlert('Low'));
+        testHighBtn.addEventListener('click', () => sendTestAlert('High'));
+        testMediumBtn.addEventListener('click', () => sendTestAlert('Medium'));
+        testLowBtn.addEventListener('click', () => sendTestAlert('Low'));
         clearBtn.addEventListener('click', () => {
             alerts = [];
             renderAlerts();
-            
-            // Clear map markers
-            if (map) {
-                markers.forEach(marker => map.removeLayer(marker));
-                markers = [];
-            }
-            
             log('Alerts cleared');
         });
         
@@ -251,4 +172,5 @@
     </script>
 </body>
 </html>
+
 

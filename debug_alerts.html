@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Alerts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .version-header {
+            text-align: center;
+            background: #6c5ce7;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .version-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 5px solid;
+        }
+        .alert-high {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+            color: #b71c1c;
+        }
+        .alert-medium {
+            background-color: #fff8e1;
+            border-left-color: #ffc107;
+            color: #ff6f00;
+        }
+        .alert-low {
+            background-color: #e8f5e9;
+            border-left-color: #4caf50;
+            color: #1b5e20;
+        }
+        .alert-time {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        .alert-location {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        .connection-status {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .status-connected { color: green; }
+        .status-disconnected { color: red; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        #alerts-container {
+            min-height: 200px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        #no-alerts-message {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="version-header">
+            <div class="version-number">Debug Alerts v1.10</div>
+            <div>Rayhunter Alert System Test Interface</div>
+        </div>
+        
+        <h1>Debug Alert System</h1>
+        
+        <div class="connection-status">
+            <span id="alert-status-indicator" class="status-disconnected">●</span>
+            <span id="alert-status-text">Disconnected</span>
+        </div>
+        
+        <div>
+            <button class="btn" id="add-test-btn">Add Test Alert</button>
+            <button class="btn" id="clear-all-btn">Clear All Alerts</button>
+            <button class="btn" id="add-three-btn">Add 3 Test Alerts</button>
+        </div>
+        
+        <h3>Alerts Received:</h3>
+        <div id="alerts-container">
+            <p id="no-alerts-message">No alerts detected yet.</p>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h4>Debug Info:</h4>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let alerts = [];
+        let alertCounter = 0;
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, connecting to SSE...');
+            connectToAlertSSE();
+            updateDebugInfo();
+            
+            // Add event listeners for buttons
+            document.getElementById('add-test-btn').addEventListener('click', testAddAlert);
+            document.getElementById('clear-all-btn').addEventListener('click', clearAlerts);
+            document.getElementById('add-three-btn').addEventListener('click', testMultipleAlerts);
+            
+            // Set up event delegation for remove buttons
+            const alertsContainer = document.getElementById('alerts-container');
+            alertsContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-alert-btn')) {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    console.log('Remove button clicked for alert:', alertId);
+                    removeAlert(alertId);
+                }
+            });
+            
+            console.log('Button event listeners and remove button delegation added');
+        });
+        
+        function connectToAlertSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            console.log('Connecting to SSE endpoint...');
+            eventSource = new EventSource('/api/attack-alerts');
+            
+            eventSource.onopen = () => {
+                console.log('SSE connected!');
+                document.getElementById('alert-status-indicator').className = 'status-connected';
+                document.getElementById('alert-status-text').textContent = 'Connected';
+                updateDebugInfo();
+            };
+            
+            eventSource.onmessage = (event) => {
+                console.log('Received SSE message:', event.data);
+                try {
+                    const alert = JSON.parse(event.data);
+                    addAlert(alert);
+                } catch (error) {
+                    console.error('Error parsing alert:', error);
+                }
+            };
+            
+            eventSource.onerror = () => {
+                console.log('SSE connection error');
+                document.getElementById('alert-status-indicator').className = 'status-disconnected';
+                document.getElementById('alert-status-text').textContent = 'Disconnected';
+                updateDebugInfo();
+                
+                // Try to reconnect after 5 seconds
+                setTimeout(connectToAlertSSE, 5000);
+            };
+        }
+        
+        function addAlert(alert) {
+            console.log('Adding alert:', alert);
+            
+            // Generate unique ID if none exists
+            if (!alert.id) {
+                alert.id = Date.now() + '_' + alertCounter++;
+            }
+            
+            // Add to alerts array
+            alerts.push(alert);
+            console.log('Alerts array now has', alerts.length, 'alerts');
+            
+            // Render all alerts
+            renderAlerts();
+            updateDebugInfo();
+        }
+        
+        function renderAlerts() {
+            console.log('Rendering', alerts.length, 'alerts');
+            
+            const alertsContainer = document.getElementById('alerts-container');
+            
+            if (!alerts || alerts.length === 0) {
+                console.log('No alerts to display');
+                alertsContainer.innerHTML = '<p id="no-alerts-message">No alerts detected yet.</p>';
+                return;
+            }
+            
+            // Clear container
+            alertsContainer.innerHTML = '';
+            
+            // Add each alert
+            alerts.forEach((alert, index) => {
+                console.log('Creating alert element for:', alert);
+                
+                const alertEl = document.createElement('div');
+                alertEl.id = `alert-${alert.id}`;
+                alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
+                
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                
+                // Create the alert content
+                const alertContent = document.createElement('div');
+                alertContent.innerHTML = `
+                    <strong>${index + 1}. ${alert.event_type} Alert</strong><br>
+                    ${alert.message || 'No message'}<br>
+                    <div class="alert-time">Time: ${timestamp}</div>
+                    ${alert.location ? `<div class="alert-location">Location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}</div>` : ''}
+                `;
+                
+                // Create the remove button with data attribute instead of onclick
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;';
+                removeBtn.setAttribute('data-alert-id', alert.id);
+                removeBtn.className = 'remove-alert-btn';
+                
+                // Add content and button to alert element
+                alertEl.appendChild(alertContent);
+                alertEl.appendChild(removeBtn);
+                
+                alertsContainer.appendChild(alertEl);
+            });
+            
+            console.log('Finished rendering alerts');
+        }
+        
+        function removeAlert(alertId) {
+            console.log('Removing alert:', alertId);
+            alerts = alerts.filter(alert => alert.id !== alertId);
+            renderAlerts();
+            updateDebugInfo();
+        }
+        
+        function clearAlerts() {
+            console.log('clearAlerts function called!');
+            console.log('Before clearing, alerts array had', alerts.length, 'alerts');
+            alerts = [];
+            console.log('After clearing, alerts array has', alerts.length, 'alerts');
+            renderAlerts();
+            updateDebugInfo();
+        }
+        
+        function testAddAlert() {
+            console.log('testAddAlert function called!');
+            const testAlert = {
+                id: 'test_' + Date.now(),
+                event_type: 'High',
+                message: 'Test alert message',
+                timestamp: new Date().toISOString()
+                // No hardcoded location - let the daemon use its GPS data
+            };
+            console.log('Created test alert:', testAlert);
+            addAlert(testAlert);
+        }
+        
+        function testMultipleAlerts() {
+            console.log('Starting to add 3 test alerts...');
+            const types = ['High', 'Medium', 'Low'];
+            
+            // Clear existing alerts first
+            alerts = [];
+            renderAlerts();
+            
+            // Add alerts with delays - use different approach
+            for (let i = 0; i < types.length; i++) {
+                const type = types[i];
+                const delay = (i + 1) * 1000; // 1, 2, 3 seconds
+                
+                console.log(`Scheduling ${type} alert ${i + 1} in ${delay/1000} seconds`);
+                
+                setTimeout(() => {
+                    const testAlert = {
+                        id: 'test_' + Date.now() + '_' + i,
+                        event_type: type,
+                        message: `Test ${type} alert ${i + 1}`,
+                        timestamp: new Date().toISOString()
+                        // No hardcoded location - let the daemon use its GPS data
+                    };
+                    console.log(`Adding ${type} alert ${i + 1}`);
+                    addAlert(testAlert);
+                }, delay);
+            }
+        }
+        
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML = `
+                <p><strong>Alerts in memory:</strong> ${alerts.length}</p>
+                <p><strong>SSE Status:</strong> ${eventSource ? 'Connected' : 'Disconnected'}</p>
+                <p><strong>Last alert:</strong> ${alerts.length > 0 ? alerts[alerts.length - 1].event_type : 'None'}</p>
+                <p><strong>Alert IDs:</strong> ${alerts.map(a => a.id).join(', ') || 'None'}</p>
+            `;
+        }
+    </script>
+</body>
+</html>

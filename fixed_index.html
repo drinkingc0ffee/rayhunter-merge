@@ -136,81 +136,6 @@
             transform: translateY(-2px);
         }
         
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
-        }
-        
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 0;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            animation: modalSlideIn 0.3s ease-out;
-        }
-        
-        @keyframes modalSlideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .modal-header {
-            background: #6c5ce7;
-            color: white;
-            padding: 20px;
-            border-radius: 10px 10px 0 0;
-        }
-        
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.2rem;
-        }
-        
-        .modal-body {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .modal-body p {
-            margin: 0;
-            color: #333;
-            line-height: 1.5;
-        }
-        
-        .modal-footer {
-            padding: 20px;
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        
-        .btn-danger {
-            background: #dc3545;
-        }
-        
-        .btn-danger:hover {
-            background: #c82333;
-        }
-        
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -305,57 +230,19 @@
         }
         
         #alerts-container {
-            min-height: 0;
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
             margin-bottom: 15px;
             padding-right: 5px;
-            /* Force scrollbar to be visible in Chrome when needed */
-            scrollbar-width: thin;
-            scrollbar-color: #6c5ce7 #f0f0f0;
-            /* Dynamic sizing - grows with content up to max */
-            transition: height 0.3s ease;
-            /* Chrome-specific scrollbar forcing */
-            -webkit-overflow-scrolling: touch;
-            /* Force scrollbar visibility in Chrome */
-            scrollbar-gutter: stable;
         }
         
-        /* Webkit scrollbar styling for Chrome/Safari */
-        #alerts-container::-webkit-scrollbar {
-            width: 8px;
-            /* Force scrollbar to always be visible */
-            -webkit-appearance: none;
+        .back-button {
+            margin-right: 10px;
+            background-color: #6c757d;
         }
         
-        #alerts-container::-webkit-scrollbar-track {
-            background: #f0f0f0;
-            border-radius: 4px;
-            /* Ensure track is always visible */
-            border: 1px solid #e0e0e0;
-        }
-        
-        #alerts-container::-webkit-scrollbar-thumb {
-            background: #6c5ce7;
-            border-radius: 4px;
-            border: 1px solid #6c5ce7;
-        }
-        
-        #alerts-container::-webkit-scrollbar-thumb:hover {
-            background: #5649c0;
-        }
-        
-        /* Force scrollbar to be visible when overflow is scroll */
-        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar {
-            display: block !important;
-        }
-        
-        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar-track {
-            display: block !important;
-        }
-        
-        #alerts-container[style*="overflow-y: scroll"]::-webkit-scrollbar-thumb {
-            display: block !important;
+        .back-button:hover {
+            background-color: #5a6268;
         }
         
         .connection-status {
@@ -418,50 +305,9 @@
         }
         
         .map-controls {
-            margin-top: 15px;
-            margin-bottom: 20px;
+            margin-top: 10px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-        }
-        
-        .btn-location {
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: 160px;
-            justify-content: center;
-        }
-        
-        .btn-location:hover {
-            background: #00a085;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .btn-location:active {
-            transform: translateY(0px);
-        }
-        
-        .btn-location:disabled {
-            background: #95a5a6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .user-location-marker {
-            z-index: 1000;
         }
         
         .map-legend {
@@ -525,7 +371,7 @@
         <div class="header">
             <h1>🐳 RAYHUNTER</h1>
             <p>Advanced Cellular Security Monitoring System</p>
-            <p>Rayhunter Version: 0.6.2.20 GE (Deployed: 2025-09-01 11:15:22)
+            <p>Rayhunter Version: 0.6.2 GE</p>
         </div>
         
         <!-- Alert Card - Placed at the top -->        
@@ -543,44 +389,23 @@
             </div>
         </div>
         
-        <!-- Confirmation Modal -->
-        <div id="confirmation-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Confirm Action</h3>
-                </div>
-                <div class="modal-body">
-                    <p id="confirmation-message">Are you sure you want to clear all alerts? This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
-                    <button class="btn btn-danger" id="confirm-btn">Clear All Alerts</button>
-                </div>
-            </div>
-        </div>
-        
         <!-- Map Container - Always visible below alerts -->
         <div id="map-container">
             <div id="map"></div>
-        </div>
-        
-        <!-- Map Controls - Positioned below map container -->
-        <div class="map-controls">
-            <button class="btn btn-location" id="center-location-btn" title="Center map on your current location">
-                📍 Center Location
-            </button>
-            <div class="map-legend">
-                <div class="legend-item">
-                    <div class="legend-color legend-high"></div>
-                    <span>High</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color legend-medium"></div>
-                    <span>Medium</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color legend-low"></div>
-                    <span>Low</span>
+            <div class="map-controls">
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <div class="legend-color legend-high"></div>
+                        <span>High</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-medium"></div>
+                        <span>Medium</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-low"></div>
+                        <span>Low</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -683,41 +508,6 @@ Real-time packet capture: RUNNING
             document.getElementById('clear-alerts-btn').addEventListener('click', function() {
                 clearAlerts();
             });
-            
-            // Add event listener for center location button
-            document.getElementById('center-location-btn').addEventListener('click', function() {
-                centerOnUserLocation();
-            });
-            
-            // Add event listeners for confirmation modal
-            document.getElementById('cancel-btn').addEventListener('click', function() {
-                hideClearConfirmation();
-            });
-            
-            document.getElementById('confirm-btn').addEventListener('click', function() {
-                clearAlertsConfirmed();
-            });
-            
-            // Close modal when clicking outside of it
-            document.getElementById('confirmation-modal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    hideClearConfirmation();
-                }
-            });
-            
-            // Set up event delegation for remove and map buttons
-            const alertsContainer = document.getElementById('alerts-container');
-            alertsContainer.addEventListener('click', function(e) {
-                if (e.target.classList.contains('remove-alert-btn')) {
-                    const alertId = e.target.getAttribute('data-alert-id');
-                    console.log('Remove button clicked for alert:', alertId);
-                    removeAlert(alertId);
-                } else if (e.target.classList.contains('map-btn')) {
-                    const alertId = e.target.getAttribute('data-alert-id');
-                    console.log('Map button clicked for alert:', alertId);
-                    focusAlertOnMap(alertId);
-                }
-            });
         });
         
         // Initialize map
@@ -741,152 +531,6 @@ Real-time packet capture: RUNNING
             }
         }
         
-        // Center map on user's current location
-        function centerOnUserLocation() {
-            console.log('Requesting user location...');
-            
-            // Check if geolocation is supported
-            if (!navigator.geolocation) {
-                showMessage('Geolocation is not supported by this browser', 'error');
-                return;
-            }
-            
-            // Show loading state
-            const btn = document.getElementById('center-location-btn');
-            const originalText = btn.textContent;
-            btn.textContent = '📍 Locating...';
-            btn.disabled = true;
-            
-            // Request user location
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
-                    
-                    console.log(`User location: ${lat}, ${lon} (accuracy: ${accuracy}m)`);
-                    
-                    // Center map on user location
-                    map.setView([lat, lon], 16);
-                    
-                    // Add a temporary marker for user location
-                    const userMarker = L.marker([lat, lon], {
-                        icon: L.divIcon({
-                            className: 'user-location-marker',
-                            html: `<div style="background-color: #00b894; width: 32px; height: 32px; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 15px rgba(0, 184, 148, 0.8); position: relative;">
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-                                    📍
-                                </div>
-                            </div>`,
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 16]
-                        })
-                    }).addTo(map);
-                    
-                    // Add accuracy circle
-                    const accuracyCircle = L.circle([lat, lon], {
-                        color: '#00b894',
-                        fillColor: '#00b894',
-                        fillOpacity: 0.1,
-                        radius: accuracy,
-                        weight: 1,
-                        opacity: 0.6
-                    }).addTo(map);
-                    
-                    // Show success message
-                    showMessage(`Map centered on your location (accuracy: ${Math.round(accuracy)}m)`, 'success');
-                    
-                    // Remove temporary marker and circle after 5 seconds
-                    setTimeout(() => {
-                        map.removeLayer(userMarker);
-                        map.removeLayer(accuracyCircle);
-                    }, 5000);
-                    
-                    // Reset button
-                    btn.textContent = originalText;
-                    btn.disabled = false;
-                },
-                function(error) {
-                    console.error('Geolocation error:', error);
-                    
-                    let errorMessage = 'Unable to get your location';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            errorMessage = 'Location information unavailable.';
-                            break;
-                        case error.TIMEOUT:
-                            errorMessage = 'Location request timed out.';
-                            break;
-                        default:
-                            errorMessage = 'An unknown error occurred while getting your location.';
-                    }
-                    
-                    showMessage(errorMessage, 'error');
-                    
-                    // Reset button
-                    btn.textContent = originalText;
-                    btn.disabled = false;
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                }
-            );
-        }
-        
-        // Focus map on a specific alert location
-        function focusAlertOnMap(alertId) {
-            console.log('Focusing map on alert:', alertId);
-            
-            // Find the alert in the array
-            const alert = alerts.find(a => a.id == alertId);
-            if (!alert) {
-                console.error('Alert not found:', alertId);
-                return;
-            }
-            
-            // Remove active class from all alerts
-            document.querySelectorAll('.alert').forEach(el => {
-                el.classList.remove('alert-active');
-            });
-            
-            // Mark alert as active
-            const alertEl = document.getElementById(`alert-${alertId}`);
-            if (alertEl) {
-                alertEl.classList.add('alert-active');
-                // Scroll the alert into view
-                alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-            
-            activeAlertId = alertId;
-            
-            // Center map on alert location
-            if (alert.location && alert.location.length === 2) {
-                const [lat, lon] = alert.location;
-                map.setView([lat, lon], 16); // Zoom in closer for better detail
-                
-                // Open marker popup if it exists
-                if (markers[alertId]) {
-                    markers[alertId].marker.openPopup();
-                }
-                
-                // Scroll to map section
-                document.getElementById('map-container').scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-            }
-            
-            // Force map to update its size
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 300);
-        }
-        
         // Highlight a specific alert and its marker
         function highlightAlert(alertId) {
             console.log('Highlighting alert:', alertId);
@@ -908,8 +552,8 @@ Real-time packet capture: RUNNING
             
             // Center on marker if exists
             if (markers[alertId]) {
-                map.setView(markers[alertId].marker.getLatLng(), 15);
-                markers[alertId].marker.openPopup();
+                map.setView(markers[alertId].getLatLng(), 15);
+                markers[alertId].openPopup();
             }
             
             // Force map to update its size
@@ -948,63 +592,28 @@ Real-time packet capture: RUNNING
                     markerColor = '#2196F3';
             }
             
-            // Create custom icon - much larger and more prominent
+            // Create custom icon
             const icon = L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.7); position: relative;">
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-                        ${alert.event_type.charAt(0).toUpperCase()}
-                    </div>
-                </div>`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                html: `<div style="background-color: ${markerColor}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
             });
             
             // Create marker
             const marker = L.marker([lat, lon], { icon }).addTo(map);
             
-            // Add radius circle around the marker
-            const radiusCircle = L.circle([lat, lon], {
-                color: markerColor,
-                fillColor: markerColor,
-                fillOpacity: 0.1,
-                radius: 100, // 100 meter radius
-                weight: 2,
-                opacity: 0.8
-            }).addTo(map);
-            
-            // Store both marker and circle
-            markers[alertId] = { marker, circle: radiusCircle };
-            
-            // Add detailed popup with attack information
+            // Add popup
             const timestamp = new Date(alert.timestamp).toLocaleString();
-            const popupContent = `
-                <div style="min-width: 250px;">
-                    <div style="background: ${markerColor}; color: white; padding: 5px; margin: -10px -10px 10px -10px; border-radius: 5px 5px 0 0; text-align: center; font-weight: bold;">
-                        ${alert.event_type.toUpperCase()} SEVERITY ATTACK
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <strong>Alert Details:</strong><br>
-                        ${alert.message || 'No message provided'}
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <strong>Detection Time:</strong><br>
-                        ${timestamp}
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <strong>GPS Coordinates:</strong><br>
-                        ${lat.toFixed(6)}, ${lon.toFixed(6)}
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <strong>Alert ID:</strong><br>
-                        ${alert.id}
-                    </div>
-                    <div style="text-align: center; margin-top: 10px;">
-                        <small style="color: #666;">Click outside to close</small>
-                    </div>
-                </div>
-            `;
-            marker.bindPopup(popupContent);
+            marker.bindPopup(`
+                <strong>${alert.event_type} Alert</strong><br>
+                ${alert.message}<br>
+                <small>${timestamp}</small><br>
+                <small>Location: ${lat.toFixed(6)}, ${lon.toFixed(6)}</small>
+            `);
+            
+            // Store marker
+            markers[alertId] = marker;
             
             // Update polyline connecting all markers
             updatePolyline();
@@ -1012,7 +621,7 @@ Real-time packet capture: RUNNING
             // Make sure all markers are visible on the map
             const bounds = L.latLngBounds([]);
             for (const id in markers) {
-                bounds.extend(markers[id].marker.getLatLng());
+                bounds.extend(markers[id].getLatLng());
             }
             if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50] });
@@ -1027,7 +636,7 @@ Real-time packet capture: RUNNING
             }
             
             // Create array of points from markers
-            const points = Object.values(markers).map(markerData => markerData.marker.getLatLng());
+            const points = Object.values(markers).map(marker => marker.getLatLng());
             
             // Only create polyline if we have at least 2 points
             if (points.length >= 2) {
@@ -1060,11 +669,8 @@ Real-time packet capture: RUNNING
                 console.log('Received alert:', event.data);
                 try {
                     const alert = JSON.parse(event.data);
-                    console.log('Parsed alert object:', alert);
-                    
                     const alertId = Date.now(); // Use timestamp as unique ID
                     alert.id = alertId; // Add ID to alert object
-                    console.log('Alert ID assigned:', alertId);
                     
                     // Add default message if none exists
                     if (!alert.message) {
@@ -1073,19 +679,15 @@ Real-time packet capture: RUNNING
                     
                     // Add to alerts array
                     alerts.push(alert);
-                    console.log('Alert added to array. Current alerts:', alerts);
                     
                     // Always add marker to map (with default location if needed)
                     addMarker(alert, alertId);
-                    console.log('Marker added to map');
                     
                     // Show toast notification for new alert
                     const severity = alert.event_type.toLowerCase();
                     showMessage(`${severity.toUpperCase()} ALERT: ${alert.message}`, severity);
-                    console.log('Toast notification shown');
                     
                     // Render all alerts
-                    console.log('Calling renderAlerts...');
                     renderAlerts();
                     
                     console.log(`Alert added to array. Total alerts: ${alerts.length}`);
@@ -1104,123 +706,66 @@ Real-time packet capture: RUNNING
             };
         }
         
-        // Render alerts in the UI - Fixed version from debug_alerts.html
+        // Render alerts in the UI
         function renderAlerts() {
             console.log(`Rendering ${alerts.length} alerts`);
             
             const alertsContainer = document.getElementById('alerts-container');
-            console.log('Alerts container found:', alertsContainer);
+            const noAlertsMessage = document.getElementById('no-alerts-message');
             
             if (!alerts || alerts.length === 0) {
                 console.log('No alerts to display');
-                alertsContainer.innerHTML = '<p id="no-alerts-message">No alerts detected yet.</p>';
-                // Reset height to minimum when no alerts
-                alertsContainer.style.height = 'auto';
+                noAlertsMessage.style.display = 'block';
+                alertsContainer.innerHTML = '';
                 return;
             }
             
-            console.log('Starting to render alerts...');
-            
-            // Clear container
+            noAlertsMessage.style.display = 'none';
             alertsContainer.innerHTML = '';
-            console.log('Container cleared');
             
-            // Add each alert in reverse order (newest first)
-            alerts.slice().reverse().forEach((alert, index) => {
-                console.log(`Creating alert element ${index + 1} for:`, alert);
+            // Create a document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            
+            // Create alert elements in chronological order (oldest first)
+            alerts.forEach((alert) => {
+                const alertEl = document.createElement('div');
+                alertEl.id = `alert-${alert.id}`;
+                alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
+                alertEl.onclick = () => highlightAlert(alert.id);
                 
-                try {
-                    const alertEl = document.createElement('div');
-                    alertEl.id = `alert-${alert.id}`;
-                    alertEl.className = `alert alert-${alert.event_type.toLowerCase()}`;
-                    alertEl.onclick = () => highlightAlert(alert.id);
-                    
-                    const timestamp = alert.timestamp ? new Date(alert.timestamp).toLocaleString() : new Date().toLocaleString();
-                    
-                    // Create the alert content
-                    const alertContent = document.createElement('div');
-                    alertContent.innerHTML = `
-                        <strong>${alerts.length - index}. ${alert.event_type} Alert</strong><br>
-                        ${alert.message || 'No message'}<br>
-                        <div class="alert-time">Time: ${timestamp}</div>
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                
+                alertEl.innerHTML = `
+                    <div class="alert-content">
+                        <strong>${alert.event_type}</strong>: ${alert.message}
+                        <div class="alert-time">${timestamp}</div>
                         ${alert.location ? `<div class="alert-location">Location: ${alert.location[0].toFixed(6)}, ${alert.location[1].toFixed(6)}</div>` : ''}
-                    `;
-                    
-                    // Create the map button
-                    const mapBtn = document.createElement('button');
-                    mapBtn.textContent = 'Map';
-                    mapBtn.style.cssText = 'background: #6c5ce7; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px; margin-right: 5px;';
-                    mapBtn.setAttribute('data-alert-id', alert.id);
-                    mapBtn.className = 'map-btn';
-                    
-                    // Create the remove button
-                    const removeBtn = document.createElement('button');
-                    removeBtn.textContent = 'Remove';
-                    removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;';
-                    removeBtn.setAttribute('data-alert-id', alert.id);
-                    removeBtn.className = 'remove-alert-btn';
-                    
-                    // Add content and buttons to alert element
-                    alertEl.appendChild(alertContent);
-                    alertEl.appendChild(mapBtn);
-                    alertEl.appendChild(removeBtn);
-                    
-                    alertsContainer.appendChild(alertEl);
-                    console.log(`Alert element ${index + 1} added to container`);
-                } catch (error) {
-                    console.error(`Error creating alert element ${index + 1}:`, error);
-                }
+                    </div>
+                    <div class="alert-actions">
+                        <button class="map-btn" onclick="event.stopPropagation(); highlightAlert(${alert.id})">Map</button>
+                        <button class="alert-dismiss" onclick="event.stopPropagation(); dismissAlert(${alert.id})">×</button>
+                    </div>
+                `;
+                
+                fragment.appendChild(alertEl);
             });
             
-            // Calculate dynamic height based on number of alerts
-            const alertHeight = 120; // Approximate height per alert
-            const maxVisibleAlerts = 4;
-            let containerHeight;
+            // Add all elements to the container at once
+            alertsContainer.appendChild(fragment);
             
-            if (alerts.length <= maxVisibleAlerts) {
-                // For 4 or fewer alerts, grow container naturally
-                containerHeight = alerts.length * alertHeight;
-                alertsContainer.style.height = `${containerHeight}px`;
-                alertsContainer.style.overflowY = 'hidden'; // Hide scrollbar
-            } else {
-                // For 5+ alerts, set fixed height and force scrollbar
-                containerHeight = maxVisibleAlerts * alertHeight;
-                alertsContainer.style.height = `${containerHeight}px`;
-                alertsContainer.style.overflowY = 'scroll'; // Force scrollbar
-                
-                // Force Chrome to show scrollbar by ensuring content overflows
-                setTimeout(() => {
-                    alertsContainer.scrollTop = 1;
-                    alertsContainer.scrollTop = 0;
-                }, 100);
-            }
+            // Scroll to the bottom of the alerts container to show newest alerts
+            alertsContainer.scrollTop = alertsContainer.scrollHeight;
             
-            // Scroll to the top of the alerts container to show newest alerts
-            alertsContainer.scrollTop = 0;
-            
-            console.log(`Rendered ${alerts.length} alerts with height ${containerHeight}px`);
+            console.log(`Rendered ${alerts.length} alerts`);
         }
         
-        // Remove a specific alert
-        function removeAlert(alertId) {
-            console.log('Removing alert:', alertId);
-            console.log('Current alerts array:', alerts);
-            console.log('Looking for alert with ID:', alertId);
+        // Dismiss a specific alert
+        function dismissAlert(alertId) {
+            console.log('Dismissing alert:', alertId);
             
-            // Find the alert in the array
-            const alertIndex = alerts.findIndex(alert => alert.id == alertId);
-            console.log('Found alert at index:', alertIndex);
-            
-            if (alertIndex === -1) {
-                console.error('Alert not found in array:', alertId);
-                showMessage('Error: Alert not found');
-                return;
-            }
-            
-            // Remove marker and circle if exists
+            // Remove marker if exists
             if (markers[alertId]) {
-                map.removeLayer(markers[alertId].marker);
-                map.removeLayer(markers[alertId].circle);
+                map.removeLayer(markers[alertId]);
                 delete markers[alertId];
                 
                 // Update polyline after removing marker
@@ -1228,50 +773,24 @@ Real-time packet capture: RUNNING
             }
             
             // Remove alert from array
-            alerts.splice(alertIndex, 1);
-            console.log('Alert removed from array. New length:', alerts.length);
-            
-            // Re-render alerts
+            alerts = alerts.filter(alert => alert.id !== alertId);
             renderAlerts();
             
-            // Clear active alert if removed
+            // Clear active alert if dismissed
             if (activeAlertId === alertId) {
                 activeAlertId = null;
             }
-            
-            // Show confirmation message
-            showMessage(`Alert removed`);
-            
-            console.log(`Alert ${alertId} removed. Total alerts: ${alerts.length}`);
         }
         
-        // Dismiss a specific alert (alias for removeAlert)
-        function dismissAlert(alertId) {
-            removeAlert(alertId);
-        }
-        
-        // Show confirmation modal for clearing alerts
-        function showClearConfirmation() {
-            const modal = document.getElementById('confirmation-modal');
-            modal.style.display = 'block';
-        }
-        
-        // Hide confirmation modal
-        function hideClearConfirmation() {
-            const modal = document.getElementById('confirmation-modal');
-            modal.style.display = 'none';
-        }
-        
-        // Clear all alerts (called after confirmation)
-        function clearAlertsConfirmed() {
+        // Clear all alerts
+        function clearAlerts() {
             console.log('Clearing all alerts...');
             
-            // Remove all markers and circles if map exists
+            // Remove all markers if map exists
             if (map) {
-                console.log('Removing all markers and circles from map');
+                console.log('Removing all markers from map');
                 Object.keys(markers).forEach(id => {
-                    map.removeLayer(markers[id].marker);
-                    map.removeLayer(markers[id].circle);
+                    map.removeLayer(markers[id]);
                 });
                 markers = {};
                 
@@ -1292,18 +811,15 @@ Real-time packet capture: RUNNING
             // Clear active alert
             activeAlertId = null;
             
-            // Hide the modal
-            hideClearConfirmation();
-            
             // Show confirmation message
             showMessage('Alerts cleared');
             
             console.log('All alerts cleared');
-        }
-        
-        // Clear all alerts (legacy function - now shows confirmation)
-        function clearAlerts() {
-            showClearConfirmation();
+            
+            // Make sure the no-alerts message is displayed
+            document.getElementById('no-alerts-message').style.display = 'block';
+            
+            return false; // Prevent any form submission
         }
         
         function refreshStatus() {

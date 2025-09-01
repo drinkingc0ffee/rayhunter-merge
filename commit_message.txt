@@ -1,0 +1,20 @@
+Add cell attack alerts feature
+
+This commit adds real-time cell attack detection and alerting to Rayhunter. When potential attacks are detected, alerts are displayed in the web UI and can be sent as notifications.
+
+Key features:
+- Real-time detection of cell network attacks
+- Multiple severity levels (High, Medium, Low)
+- GPS location tracking for attack events
+- Browser notifications for immediate awareness
+- Persistent alert history in the web UI
+
+Implementation details:
+- Server-Sent Events (SSE) endpoint for real-time alerts
+- GPS coordinate lookup for attack events
+- Web UI component for displaying alerts
+- Filesystem-based static file serving for debug tools
+- Deployment and testing scripts
+
+This commit also includes various utility scripts for deployment, debugging, and testing on embedded Linux devices.
+
